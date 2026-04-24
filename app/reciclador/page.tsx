@@ -28,6 +28,7 @@ export default function RecicladorPage() {
   const mapContainerRef = useCallback((node: HTMLDivElement | null) => setMapContainerEl(node), []);
   const map = useRef<mapboxgl.Map | null>(null);
   const markersRef = useRef<Record<string, mapboxgl.Marker>>({});
+  const reportesRef = useRef<ReporteCercano[]>([]);
   const routeLayerRef = useRef(false);
 
   const [reportes, setReportes] = useState<ReporteCercano[]>([]);
@@ -62,6 +63,7 @@ export default function RecicladorPage() {
 
     map.current.on("load", () => {
       obtenerUbicacion();
+      if (reportesRef.current.length > 0) pintarPines(reportesRef.current);
     });
 
     return () => {
@@ -100,6 +102,7 @@ export default function RecicladorPage() {
       }
       const lista = Array.isArray(data) ? data : [];
       setReportes(lista);
+      reportesRef.current = lista;
       if (map.current?.loaded()) pintarPines(lista);
     } catch (e) {
       setErrorApi(e instanceof Error ? e.message : "Error de red");
