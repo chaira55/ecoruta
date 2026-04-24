@@ -87,14 +87,16 @@ export default function FormularioReporte({ tipo, onVolver }: Props) {
 
       const resultado = await res.json();
 
+      if (!res.ok) throw new Error(resultado.error ?? `HTTP ${res.status}`);
+
       if (resultado.tipo_material) {
         setMateriales([resultado.tipo_material as Material]);
         setIaDetectado(resultado.tipo_material);
       } else {
         setIaDetectado("no_detectado");
       }
-    } catch {
-      setIaDetectado("error");
+    } catch (err) {
+      setIaDetectado("error:" + (err instanceof Error ? err.message : String(err)));
     } finally {
       setAnalizandoIA(false);
     }
@@ -267,8 +269,8 @@ export default function FormularioReporte({ tipo, onVolver }: Props) {
                   {!analizandoIA && iaDetectado === "no_detectado" && (
                     <span className="text-xs text-gray-400">IA no detectó material</span>
                   )}
-                  {!analizandoIA && iaDetectado === "error" && (
-                    <span className="text-xs text-red-400">IA no disponible, selecciona manualmente</span>
+                  {!analizandoIA && iaDetectado?.startsWith("error") && (
+                    <span className="text-xs text-red-400">{iaDetectado}</span>
                   )}
                 </div>
                 <div className="grid grid-cols-2 gap-2">
