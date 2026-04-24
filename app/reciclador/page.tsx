@@ -37,6 +37,7 @@ export default function RecicladorPage() {
   const [pesoInput, setPesoInput] = useState("");
   const [filtroMaterial, setFiltroMaterial] = useState<string>("todos");
   const [confirmando, setConfirmando] = useState(false);
+  const [errorApi, setErrorApi] = useState<string | null>(null);
 
   // Inicializar mapa
   useEffect(() => {
@@ -85,12 +86,20 @@ export default function RecicladorPage() {
 
   async function cargarReportes(lat: number, lng: number) {
     setCargando(true);
+    setErrorApi(null);
     try {
       const res = await fetch(`/api/reportes?lat=${lat}&lng=${lng}`, { credentials: "include" });
       const data = await res.json();
+      if (!res.ok || data?.error) {
+        setErrorApi(data?.error ?? `Error ${res.status}`);
+        setReportes([]);
+        return;
+      }
       const lista = Array.isArray(data) ? data : [];
       setReportes(lista);
       pintarPines(lista);
+    } catch (e) {
+      setErrorApi(e instanceof Error ? e.message : "Error de red");
     } finally {
       setCargando(false);
     }
@@ -265,6 +274,10 @@ export default function RecicladorPage() {
           <div className="flex-1 overflow-y-auto">
             {cargando ? (
               <div className="p-4 text-center text-gray-400 text-sm">Cargando reportes...</div>
+            ) : errorApi ? (
+              <div className="p-4 text-center text-red-500 text-xs bg-red-50 m-2 rounded-xl">
+                Error: {errorApi}
+              </div>
             ) : reportes.filter((r) => r.estado !== "completado" && (filtroMaterial === "todos" || r.material === filtroMaterial || (filtroMaterial === "todos" && r.tipo === "emergencia"))).length === 0 ? (
               <div className="p-4 text-center text-gray-400 text-sm">
                 No hay solicitudes cercanas
