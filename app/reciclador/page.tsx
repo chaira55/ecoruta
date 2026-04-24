@@ -216,7 +216,6 @@ export default function RecicladorPage() {
       {/* Header */}
       <div className="bg-white border-b px-4 py-3 flex items-center justify-between shadow-sm z-10">
         <div className="flex items-center gap-2">
-          <Link href="/" className="text-gray-400 hover:text-gray-600 text-sm">←</Link>
           <span className="text-lg font-bold text-gray-800">🚴 Vista Reciclador</span>
         </div>
         <div className="flex items-center gap-3 text-sm">
