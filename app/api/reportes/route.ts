@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
     const { data, error } = await supabase.rpc("reportes_cercanos", {
       lat: parseFloat(lat),
       lng: parseFloat(lng),
-      radio_metros: 10000,
+      radio_metros: 50000,
     });
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     return NextResponse.json(data);

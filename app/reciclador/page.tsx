@@ -213,7 +213,8 @@ export default function RecicladorPage() {
     const channel = supabase
       .channel("reportes-realtime")
       .on("postgres_changes", { event: "*", schema: "public", table: "reportes" }, () => {
-        if (ubicacion) cargarReportes(ubicacion[1], ubicacion[0]);
+        const coords = ubicacion ?? [MEDELLIN_CENTER[0], MEDELLIN_CENTER[1]] as [number, number];
+        cargarReportes(coords[1], coords[0]);
       })
       .subscribe();
 
