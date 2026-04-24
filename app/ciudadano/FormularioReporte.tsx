@@ -51,20 +51,24 @@ export default function FormularioReporte({ tipo, onVolver }: Props) {
   async function analizarConIA(file: File) {
     setAnalizandoIA(true);
     try {
-      const supabase = createClient();
-      const ext = file.name.split(".").pop() ?? "jpg";
-      const nombre = `temp-${Date.now()}.${ext}`;
-      const { error: upErr } = await supabase.storage
-        .from("fotos-reportes")
-        .upload(nombre, file);
-      if (upErr) throw upErr;
+      // Convertir imagen a base64 directamente en el browser
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const result = reader.result as string;
+          // Quitar el prefijo "data:image/jpeg;base64,"
+          resolve(result.split(",")[1]);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
 
-      const { data } = supabase.storage.from("fotos-reportes").getPublicUrl(nombre);
+      const mediaType = file.type || "image/jpeg";
 
       const res = await fetch("/api/vision-ai", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ foto_url: data.publicUrl }),
+        body: JSON.stringify({ base64, media_type: mediaType }),
       });
 
       const resultado = await res.json();

@@ -4,10 +4,11 @@ import Anthropic from "@anthropic-ai/sdk";
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 export async function POST(request: NextRequest) {
-  const { foto_url } = await request.json();
+  const body = await request.json();
+  const { base64, media_type } = body;
 
-  if (!foto_url) {
-    return NextResponse.json({ error: "foto_url requerida" }, { status: 400 });
+  if (!base64) {
+    return NextResponse.json({ error: "base64 requerido" }, { status: 400 });
   }
 
   const message = await client.messages.create({
@@ -19,21 +20,25 @@ export async function POST(request: NextRequest) {
         content: [
           {
             type: "image",
-            source: { type: "url", url: foto_url },
+            source: {
+              type: "base64",
+              media_type: (media_type as "image/jpeg" | "image/png" | "image/gif" | "image/webp") ?? "image/jpeg",
+              data: base64,
+            },
           },
           {
             type: "text",
-            text: `Analiza esta imagen de residuos reciclables. Responde ÚNICAMENTE con un objeto JSON, sin markdown, sin explicaciones, sin texto adicional.
+            text: `Analiza esta imagen de residuos reciclables. Responde ÚNICAMENTE con un objeto JSON, sin markdown, sin explicaciones.
 
-El JSON debe tener exactamente esta estructura:
+Estructura exacta:
 {"es_residuo":true,"tipo_material":"plastico","confianza":"alta"}
 
 Reglas:
-- es_residuo: true si ves cualquier residuo o material reciclable, false si la imagen no tiene residuos
-- tipo_material debe ser exactamente una de estas palabras (sin tildes, sin mayúsculas): carton, plastico, vidrio, metal, organico
+- es_residuo: true si ves cualquier residuo o material reciclable
+- tipo_material (sin tildes, minúsculas): carton, plastico, vidrio, metal, organico
 - Si hay varios tipos, elige el predominante
 - confianza: alta, media o baja
-- Si no hay residuos: {"es_residuo":false,"tipo_material":null,"confianza":"alta"}`,
+- Sin residuos: {"es_residuo":false,"tipo_material":null,"confianza":"alta"}`,
           },
         ],
       },
@@ -43,7 +48,6 @@ Reglas:
   try {
     const text =
       message.content[0].type === "text" ? message.content[0].text.trim() : "";
-    // Extraer JSON aunque venga con texto alrededor
     const match = text.match(/\{[\s\S]*\}/);
     if (!match) throw new Error("No JSON found");
     const result = JSON.parse(match[0]);
