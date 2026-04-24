@@ -39,6 +39,12 @@ export default function RecicladorPage() {
   const [confirmando, setConfirmando] = useState(false);
   const [errorApi, setErrorApi] = useState<string | null>(null);
 
+  // Cargar reportes al montar (independiente del mapa)
+  useEffect(() => {
+    cargarReportes(MEDELLIN_CENTER[1], MEDELLIN_CENTER[0]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Inicializar mapa
   useEffect(() => {
     if (map.current || !mapContainer.current) return;
@@ -54,7 +60,7 @@ export default function RecicladorPage() {
     map.current.addControl(new mapboxgl.NavigationControl(), "top-right");
 
     map.current.on("load", () => {
-      obtenerUbicacionYReportes();
+      obtenerUbicacion();
     });
 
     return () => {
@@ -64,22 +70,18 @@ export default function RecicladorPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  function obtenerUbicacionYReportes() {
+  function obtenerUbicacion() {
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         const coords: [number, number] = [pos.coords.longitude, pos.coords.latitude];
         setUbicacion(coords);
         map.current?.flyTo({ center: coords, zoom: 13 });
-        // Marker del reciclador
         new mapboxgl.Marker({ color: "#6366f1" })
           .setLngLat(coords)
           .setPopup(new mapboxgl.Popup().setText("Tú estás aquí"))
           .addTo(map.current!);
-        cargarReportes(coords[1], coords[0]);
       },
-      () => {
-        cargarReportes(MEDELLIN_CENTER[1], MEDELLIN_CENTER[0]);
-      },
+      () => {},
       { enableHighAccuracy: true }
     );
   }
