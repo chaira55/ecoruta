@@ -41,6 +41,7 @@ export default function RecicladorPage() {
   const [filtroMaterial, setFiltroMaterial] = useState<string>("todos");
   const [confirmando, setConfirmando] = useState(false);
   const [errorApi, setErrorApi] = useState<string | null>(null);
+  const [fotoAmpliada, setFotoAmpliada] = useState<string | null>(null);
 
   // Cargar reportes al montar (independiente del mapa)
   useEffect(() => {
@@ -360,7 +361,8 @@ export default function RecicladorPage() {
                       key={i}
                       src={url}
                       alt={`Foto ${i + 1}`}
-                      className="w-full h-24 object-contain rounded-lg bg-gray-100"
+                      onClick={() => setFotoAmpliada(url)}
+                      className="w-full h-24 object-contain rounded-lg bg-gray-100 cursor-pointer hover:opacity-90 transition"
                     />
                   ))}
                 </div>
@@ -435,5 +437,27 @@ export default function RecicladorPage() {
       </div>
     </div>
     </AuthGuard>
+
+    {/* Lightbox */}
+    {fotoAmpliada && (
+      <div
+        className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4"
+        onClick={() => setFotoAmpliada(null)}
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={fotoAmpliada}
+          alt="Foto ampliada"
+          className="max-w-full max-h-full object-contain rounded-xl"
+          onClick={(e) => e.stopPropagation()}
+        />
+        <button
+          onClick={() => setFotoAmpliada(null)}
+          className="absolute top-4 right-4 text-white text-3xl font-bold hover:text-gray-300"
+        >
+          ×
+        </button>
+      </div>
+    )}
   );
 }
