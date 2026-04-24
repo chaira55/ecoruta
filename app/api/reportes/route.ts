@@ -18,9 +18,11 @@ export async function GET(request: NextRequest) {
   }
 
   const { data, error } = await supabase
-    .from("reportes")
-    .select("*")
-    .order("creado_en", { ascending: false });
+    .rpc("reportes_cercanos", {
+      lat: 6.2442,
+      lng: -75.5812,
+      radio_metros: 100000,
+    });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json(data);
