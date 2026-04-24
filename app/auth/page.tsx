@@ -26,32 +26,42 @@ export default function AuthPage() {
     setError(null);
     const supabase = createClient();
 
+    let userId: string | null = null;
+
     if (modo === "registro") {
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: { data: { nombre, rol } },
       });
-      if (error) return setError(error.message), setCargando(false);
+      if (error) { setError(error.message); setCargando(false); return; }
+      userId = data.user?.id ?? null;
     } else {
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) return setError("Correo o contraseña incorrectos"), setCargando(false);
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) { setError("Correo o contraseña incorrectos"); setCargando(false); return; }
+      userId = data.user?.id ?? null;
     }
 
-    // Obtener perfil para redirigir según rol
-    const supabase2 = createClient();
-    const { data: { user } } = await supabase2.auth.getUser();
-    if (user) {
-      const { data: perfil } = await supabase2
-        .from("perfiles")
-        .select("rol")
-        .eq("id", user.id)
-        .single();
-      const destino = perfil?.rol === "reciclador" ? "/reciclador"
-        : perfil?.rol === "admin" ? "/admin"
-        : "/ciudadano";
+    if (!userId) { setError("No se pudo iniciar sesión"); setCargando(false); return; }
+
+    // En registro, el perfil lo crea el trigger. Esperamos un momento y redirigimos.
+    if (modo === "registro") {
+      const destino = rol === "reciclador" ? "/reciclador" : rol === "admin" ? "/admin" : "/ciudadano";
       router.push(destino);
+      return;
     }
+
+    // En login, consultamos el perfil para saber a dónde redirigir
+    const { data: perfil } = await supabase
+      .from("perfiles")
+      .select("rol")
+      .eq("id", userId)
+      .single();
+
+    const destino = perfil?.rol === "reciclador" ? "/reciclador"
+      : perfil?.rol === "admin" ? "/admin"
+      : "/ciudadano";
+    router.push(destino);
   }
 
   return (
