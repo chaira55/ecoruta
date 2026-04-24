@@ -43,6 +43,7 @@ export async function POST(request: NextRequest) {
       fotos_extra: body.fotos_extra ?? [],
       nota: body.nota ?? null,
       estado: "pendiente",
+      ciudadano_id: body.ciudadano_id ?? null,
     })
     .select()
     .single();
@@ -60,6 +61,7 @@ export async function PATCH(request: NextRequest) {
     .update({
       estado: body.estado,
       ...(body.peso_kg ? { peso_kg: body.peso_kg } : {}),
+      ...(body.reciclador_id ? { reciclador_id: body.reciclador_id } : {}),
     })
     .eq("id", body.id)
     .select()

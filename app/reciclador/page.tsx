@@ -42,6 +42,17 @@ export default function RecicladorPage() {
   const [confirmando, setConfirmando] = useState(false);
   const [errorApi, setErrorApi] = useState<string | null>(null);
   const [fotoAmpliada, setFotoAmpliada] = useState<string | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
+  const [statsPanel, setStatsPanel] = useState(false);
+  const [statsReciclador, setStatsReciclador] = useState<{ total_kg: number; co2_kg: number; completados: number; por_material: Record<string, number> } | null>(null);
+
+  // Cargar userId al montar
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user?.id) setUserId(session.user.id);
+    });
+  }, []);
 
   // Cargar reportes al montar (independiente del mapa)
   useEffect(() => {
@@ -140,11 +151,18 @@ export default function RecicladorPage() {
     });
   }
 
+  async function cargarStatsReciclador() {
+    if (!userId) return;
+    const res = await fetch(`/api/stats/reciclador?reciclador_id=${userId}`);
+    const data = await res.json();
+    setStatsReciclador(data);
+  }
+
   async function actualizarEstado(id: string, estado: EstadoReporte, peso_kg?: number) {
     await fetch("/api/reportes", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id, estado, peso_kg }),
+      body: JSON.stringify({ id, estado, peso_kg, reciclador_id: userId }),
     });
 
     setReportes((prev) =>
@@ -247,6 +265,12 @@ export default function RecicladorPage() {
               {emergencias.length} emergencias
             </span>
           )}
+          <button
+            onClick={() => { setStatsPanel(true); cargarStatsReciclador(); }}
+            className="text-gray-500 hover:text-green-600 border border-gray-200 px-3 py-1 rounded-xl transition text-xs font-medium"
+          >
+            🏆 Mi impacto
+          </button>
           <UserMenu />
         </div>
       </div>
@@ -438,6 +462,54 @@ export default function RecicladorPage() {
       </div>
     </div>
     </AuthGuard>
+
+    {/* Panel Mi Impacto */}
+    {statsPanel && (
+      <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={() => setStatsPanel(false)}>
+        <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
+          <div className="flex items-center justify-between mb-5">
+            <h2 className="text-lg font-bold text-gray-800">🏆 Mi impacto</h2>
+            <button onClick={() => setStatsPanel(false)} className="text-gray-400 hover:text-gray-600 text-xl">×</button>
+          </div>
+          {!statsReciclador ? (
+            <p className="text-center text-gray-400 py-6">Cargando...</p>
+          ) : (
+            <>
+              <div className="grid grid-cols-3 gap-3 mb-5">
+                <div className="bg-green-50 rounded-xl p-3 text-center">
+                  <p className="text-2xl font-bold text-green-700">{statsReciclador.total_kg}</p>
+                  <p className="text-xs text-gray-500 mt-1">kg recolectados</p>
+                </div>
+                <div className="bg-emerald-50 rounded-xl p-3 text-center">
+                  <p className="text-2xl font-bold text-emerald-700">{statsReciclador.co2_kg}</p>
+                  <p className="text-xs text-gray-500 mt-1">kg CO₂ evitado</p>
+                </div>
+                <div className="bg-blue-50 rounded-xl p-3 text-center">
+                  <p className="text-2xl font-bold text-blue-700">{statsReciclador.completados}</p>
+                  <p className="text-xs text-gray-500 mt-1">completados</p>
+                </div>
+              </div>
+              {Object.keys(statsReciclador.por_material).length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Por material</p>
+                  <div className="space-y-2">
+                    {Object.entries(statsReciclador.por_material).map(([mat, kg]) => (
+                      <div key={mat} className="flex items-center justify-between">
+                        <span className="text-sm capitalize text-gray-700">{mat}</span>
+                        <span className="text-sm font-semibold text-green-700">{kg} kg</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {statsReciclador.completados === 0 && (
+                <p className="text-center text-gray-400 text-sm py-2">¡Completa tu primer reporte para ver tu impacto!</p>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+    )}
 
     {/* Lightbox */}
     {fotoAmpliada && (

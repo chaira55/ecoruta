@@ -163,6 +163,8 @@ export default function FormularioReporte({ tipo, onVolver }: Props) {
         urls.push(urlData.publicUrl);
       }
 
+      const { data: { session } } = await supabase.auth.getSession();
+
       const res = await fetch("/api/reportes", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -175,6 +177,7 @@ export default function FormularioReporte({ tipo, onVolver }: Props) {
           foto_url: urls[0],
           fotos_extra: urls.slice(1),
           nota: nota || null,
+          ciudadano_id: session?.user?.id ?? null,
         }),
       });
 

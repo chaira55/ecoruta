@@ -38,6 +38,9 @@ export default function AdminPage() {
   const [cargando, setCargando] = useState(true);
   const [vistaActiva, setVistaActiva] = useState<"calor" | "pines">("calor");
   const [filtroFecha, setFiltroFecha] = useState<"hoy" | "semana" | "mes" | "todo">("todo");
+  const [tabActivo, setTabActivo] = useState<"mapa" | "tabla">("mapa");
+  const [filtroEstado, setFiltroEstado] = useState<"todos" | "pendiente" | "en_camino" | "completado">("todos");
+  const [filtroTipo, setFiltroTipo] = useState<"todos" | "emergencia" | "solicitud">("todos");
 
   useEffect(() => {
     cargarDatos();
@@ -206,6 +209,15 @@ export default function AdminPage() {
     };
   })();
 
+  async function cambiarEstadoAdmin(id: string, estado: string) {
+    await fetch("/api/reportes", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, estado }),
+    });
+    setReportes((prev) => prev.map((r) => r.id === id ? { ...r, estado } : r));
+  }
+
   const kpiCards = kpis ? [
     { label: "Total reportes", valor: kpisActivos.total, emoji: "📍", color: "bg-blue-50 text-blue-700" },
     { label: "Emergencias", valor: kpisActivos.emergencias, emoji: "🚨", color: "bg-red-50 text-red-700" },
@@ -248,39 +260,51 @@ export default function AdminPage() {
         </div>
       </div>
 
-      {/* Controles mapa y filtro fecha */}
+      {/* Tabs mapa / tabla */}
       <div className="bg-gray-900 px-4 py-2 flex flex-wrap gap-2 border-b border-gray-800 items-center">
         <button
-          onClick={() => toggleVista("calor")}
-          className={`px-4 py-1.5 rounded-lg text-sm font-medium transition ${
-            vistaActiva === "calor"
-              ? "bg-orange-500 text-white"
-              : "bg-gray-800 text-gray-400 hover:text-white"
-          }`}
+          onClick={() => setTabActivo("mapa")}
+          className={`px-4 py-1.5 rounded-lg text-sm font-medium transition ${tabActivo === "mapa" ? "bg-indigo-600 text-white" : "bg-gray-800 text-gray-400 hover:text-white"}`}
         >
-          🔥 Mapa de calor
+          🗺️ Mapa
         </button>
         <button
-          onClick={() => toggleVista("pines")}
-          className={`px-4 py-1.5 rounded-lg text-sm font-medium transition ${
-            vistaActiva === "pines"
-              ? "bg-blue-500 text-white"
-              : "bg-gray-800 text-gray-400 hover:text-white"
-          }`}
+          onClick={() => setTabActivo("tabla")}
+          className={`px-4 py-1.5 rounded-lg text-sm font-medium transition ${tabActivo === "tabla" ? "bg-indigo-600 text-white" : "bg-gray-800 text-gray-400 hover:text-white"}`}
         >
-          📍 Vista pines
+          📋 Tabla
         </button>
+
+        {tabActivo === "mapa" && (
+          <>
+            <button onClick={() => toggleVista("calor")} className={`px-4 py-1.5 rounded-lg text-sm font-medium transition ${vistaActiva === "calor" ? "bg-orange-500 text-white" : "bg-gray-800 text-gray-400 hover:text-white"}`}>
+              🔥 Calor
+            </button>
+            <button onClick={() => toggleVista("pines")} className={`px-4 py-1.5 rounded-lg text-sm font-medium transition ${vistaActiva === "pines" ? "bg-blue-500 text-white" : "bg-gray-800 text-gray-400 hover:text-white"}`}>
+              📍 Pines
+            </button>
+          </>
+        )}
+
+        {tabActivo === "tabla" && (
+          <>
+            {(["todos", "pendiente", "en_camino", "completado"] as const).map((e) => (
+              <button key={e} onClick={() => setFiltroEstado(e)} className={`px-3 py-1.5 rounded-lg text-xs font-medium transition capitalize ${filtroEstado === e ? "bg-green-600 text-white" : "bg-gray-800 text-gray-400 hover:text-white"}`}>
+                {e === "todos" ? "Todos" : e.replace("_", " ")}
+              </button>
+            ))}
+            <div className="w-px h-4 bg-gray-700" />
+            {(["todos", "emergencia", "solicitud"] as const).map((t) => (
+              <button key={t} onClick={() => setFiltroTipo(t)} className={`px-3 py-1.5 rounded-lg text-xs font-medium transition capitalize ${filtroTipo === t ? "bg-purple-600 text-white" : "bg-gray-800 text-gray-400 hover:text-white"}`}>
+                {t === "todos" ? "Todos tipos" : t}
+              </button>
+            ))}
+          </>
+        )}
+
         <div className="ml-auto flex gap-1">
           {(["hoy", "semana", "mes", "todo"] as const).map((f) => (
-            <button
-              key={f}
-              onClick={() => setFiltroFecha(f)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition capitalize ${
-                filtroFecha === f
-                  ? "bg-green-600 text-white"
-                  : "bg-gray-800 text-gray-400 hover:text-white"
-              }`}
-            >
+            <button key={f} onClick={() => setFiltroFecha(f)} className={`px-3 py-1.5 rounded-lg text-xs font-medium transition capitalize ${filtroFecha === f ? "bg-green-600 text-white" : "bg-gray-800 text-gray-400 hover:text-white"}`}>
               {f}
             </button>
           ))}
@@ -288,28 +312,91 @@ export default function AdminPage() {
       </div>
 
       {/* Mapa */}
-      <div className="flex-1 relative">
-        {cargando ? (
-          <div className="absolute inset-0 flex items-center justify-center bg-gray-950">
-            <p className="text-gray-400">Cargando datos...</p>
-          </div>
-        ) : (
-          <div ref={mapContainer} className="w-full h-full" />
-        )}
+      {tabActivo === "mapa" && (
+        <div className="flex-1 relative">
+          {cargando ? (
+            <div className="absolute inset-0 flex items-center justify-center bg-gray-950">
+              <p className="text-gray-400">Cargando datos...</p>
+            </div>
+          ) : (
+            <div ref={mapContainer} className="w-full h-full" />
+          )}
+          {vistaActiva === "calor" && !cargando && (
+            <div className="absolute bottom-4 right-4 bg-gray-900/90 rounded-xl p-3 text-xs text-white">
+              <p className="font-semibold mb-2">Intensidad</p>
+              <div className="flex items-center gap-1">
+                <div className="w-24 h-3 rounded" style={{background: "linear-gradient(to right, #22c55e, #f59e0b, #ef4444, #7f1d1d)"}} />
+              </div>
+              <div className="flex justify-between text-gray-400 mt-1">
+                <span>Baja</span><span>Alta</span>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
-        {/* Leyenda */}
-        {vistaActiva === "calor" && !cargando && (
-          <div className="absolute bottom-4 right-4 bg-gray-900/90 rounded-xl p-3 text-xs text-white">
-            <p className="font-semibold mb-2">Intensidad</p>
-            <div className="flex items-center gap-1">
-              <div className="w-24 h-3 rounded" style={{background: "linear-gradient(to right, #22c55e, #f59e0b, #ef4444, #7f1d1d)"}} />
+      {/* Tabla */}
+      {tabActivo === "tabla" && (
+        <div className="flex-1 overflow-auto">
+          {cargando ? (
+            <div className="flex items-center justify-center h-full">
+              <p className="text-gray-400">Cargando datos...</p>
             </div>
-            <div className="flex justify-between text-gray-400 mt-1">
-              <span>Baja</span><span>Alta</span>
-            </div>
-          </div>
-        )}
-      </div>
+          ) : (
+            <table className="w-full text-sm text-left">
+              <thead className="bg-gray-900 text-gray-400 sticky top-0">
+                <tr>
+                  <th className="px-4 py-3 font-medium">Tipo</th>
+                  <th className="px-4 py-3 font-medium">Material</th>
+                  <th className="px-4 py-3 font-medium">Estado</th>
+                  <th className="px-4 py-3 font-medium">Peso (kg)</th>
+                  <th className="px-4 py-3 font-medium">Fecha</th>
+                  <th className="px-4 py-3 font-medium">Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                {reportesFiltrados
+                  .filter((r) => (filtroEstado === "todos" || r.estado === filtroEstado) && (filtroTipo === "todos" || r.tipo === filtroTipo))
+                  .map((r, i) => (
+                    <tr key={r.id} className={`border-b border-gray-800 hover:bg-gray-900/50 ${i % 2 === 0 ? "bg-gray-950" : "bg-gray-900/30"}`}>
+                      <td className="px-4 py-3 text-white">
+                        {r.tipo === "emergencia" ? "🚨 Emergencia" : "♻️ Solicitud"}
+                      </td>
+                      <td className="px-4 py-3 text-gray-300 capitalize">{r.material ?? "—"}</td>
+                      <td className="px-4 py-3">
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                          r.estado === "pendiente" ? "bg-yellow-900 text-yellow-300" :
+                          r.estado === "en_camino" ? "bg-blue-900 text-blue-300" :
+                          "bg-green-900 text-green-300"
+                        }`}>
+                          {r.estado.replace("_", " ")}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-gray-300">{r.peso_kg ?? "—"}</td>
+                      <td className="px-4 py-3 text-gray-400 text-xs">
+                        {new Date(r.creado_en).toLocaleDateString("es-CO", { day: "numeric", month: "short", year: "numeric" })}
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex gap-1">
+                          {r.estado === "pendiente" && (
+                            <button onClick={() => cambiarEstadoAdmin(r.id, "en_camino")} className="px-2 py-1 bg-blue-800 text-blue-200 rounded-lg text-xs hover:bg-blue-700 transition">
+                              En camino
+                            </button>
+                          )}
+                          {r.estado !== "completado" && (
+                            <button onClick={() => cambiarEstadoAdmin(r.id, "completado")} className="px-2 py-1 bg-green-800 text-green-200 rounded-lg text-xs hover:bg-green-700 transition">
+                              Completar
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      )}
     </div>
     </AuthGuard>
   );
