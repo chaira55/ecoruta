@@ -11,6 +11,18 @@ export const metadata: Metadata = {
   title: "EcoRuta Inteligente",
   description:
     "Plataforma de gestión de residuos que conecta ciudadanos con recicladores en Medellín",
+  manifest: "/manifest.json",
+  themeColor: "#16a34a",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "EcoRuta",
+  },
+  viewport: {
+    width: "device-width",
+    initialScale: 1,
+    maximumScale: 1,
+  },
 };
 
 export default function RootLayout({

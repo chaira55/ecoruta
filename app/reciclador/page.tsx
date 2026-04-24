@@ -33,6 +33,8 @@ export default function RecicladorPage() {
   const [cargando, setCargando] = useState(true);
   const [generandoRuta, setGenerandoRuta] = useState(false);
   const [pesoInput, setPesoInput] = useState("");
+  const [filtroMaterial, setFiltroMaterial] = useState<string>("todos");
+  const [confirmando, setConfirmando] = useState(false);
 
   // Inicializar mapa
   useEffect(() => {
@@ -239,15 +241,32 @@ export default function RecicladorPage() {
             </button>
           </div>
 
+          {/* Filtro por material */}
+          <div className="px-3 py-2 border-b flex gap-1 overflow-x-auto">
+            {["todos", "plastico", "carton", "vidrio", "metal", "organico"].map((m) => (
+              <button
+                key={m}
+                onClick={() => setFiltroMaterial(m)}
+                className={`px-2 py-1 rounded-lg text-xs font-medium whitespace-nowrap transition ${
+                  filtroMaterial === m
+                    ? "bg-green-600 text-white"
+                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                }`}
+              >
+                {m === "todos" ? "Todos" : m.charAt(0).toUpperCase() + m.slice(1)}
+              </button>
+            ))}
+          </div>
+
           <div className="flex-1 overflow-y-auto">
             {cargando ? (
               <div className="p-4 text-center text-gray-400 text-sm">Cargando reportes...</div>
-            ) : reportes.filter((r) => r.estado !== "completado").length === 0 ? (
+            ) : reportes.filter((r) => r.estado !== "completado" && (filtroMaterial === "todos" || r.material === filtroMaterial || (filtroMaterial === "todos" && r.tipo === "emergencia"))).length === 0 ? (
               <div className="p-4 text-center text-gray-400 text-sm">
                 No hay solicitudes cercanas
               </div>
             ) : (
-              reportes.filter((r) => r.estado !== "completado").map((r) => (
+              reportes.filter((r) => r.estado !== "completado" && (filtroMaterial === "todos" || r.material === filtroMaterial)).map((r) => (
                 <button
                   key={r.id}
                   onClick={() => {
@@ -307,6 +326,16 @@ export default function RecicladorPage() {
                 <button onClick={() => setSeleccionado(null)} className="text-gray-400 hover:text-gray-600 text-lg">×</button>
               </div>
 
+              {/* Foto del reporte */}
+              {seleccionado.foto_url && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={seleccionado.foto_url}
+                  alt="Foto del reporte"
+                  className="w-full h-32 object-cover rounded-xl mb-3"
+                />
+              )}
+
               {seleccionado.nota && (
                 <p className="text-sm text-gray-600 mb-3 bg-gray-50 rounded-xl p-2">
                   {seleccionado.nota}
@@ -316,13 +345,29 @@ export default function RecicladorPage() {
               {/* Botones de cambio de estado */}
               {seleccionado.tipo === "solicitud" && (
                 <div className="flex gap-2">
-                  {seleccionado.estado === "pendiente" && (
+                  {seleccionado.estado === "pendiente" && !confirmando && (
                     <button
-                      onClick={() => actualizarEstado(seleccionado.id, "en_camino")}
+                      onClick={() => setConfirmando(true)}
                       className="flex-1 bg-yellow-500 text-white py-2 rounded-xl text-sm font-semibold hover:bg-yellow-600 transition"
                     >
                       🚴 Voy en camino
                     </button>
+                  )}
+                  {seleccionado.estado === "pendiente" && confirmando && (
+                    <div className="flex-1 flex gap-2">
+                      <button
+                        onClick={() => { actualizarEstado(seleccionado.id, "en_camino"); setConfirmando(false); }}
+                        className="flex-1 bg-yellow-500 text-white py-2 rounded-xl text-sm font-semibold hover:bg-yellow-600 transition"
+                      >
+                        Confirmar
+                      </button>
+                      <button
+                        onClick={() => setConfirmando(false)}
+                        className="px-3 bg-gray-100 text-gray-600 py-2 rounded-xl text-sm font-semibold hover:bg-gray-200 transition"
+                      >
+                        Cancelar
+                      </button>
+                    </div>
                   )}
                   {seleccionado.estado === "en_camino" && (
                     <div className="flex-1 flex flex-col gap-2">

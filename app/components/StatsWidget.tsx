@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Badges from "./Badges";
 
 interface Stats {
   total_kg: number;
@@ -24,6 +25,7 @@ export default function StatsWidget() {
   const km = Math.round(stats.co2_kg / 0.21); // 0.21 kg CO₂/km en coche promedio
 
   return (
+    <>
     <div className="w-full max-w-3xl bg-white/80 backdrop-blur rounded-2xl shadow-md p-5 mt-6">
       <p className="text-xs font-semibold text-green-700 uppercase tracking-wide mb-4 text-center">
         Impacto acumulado de la comunidad
@@ -48,5 +50,7 @@ export default function StatsWidget() {
         </p>
       )}
     </div>
+    <Badges total_kg={stats.total_kg} reportes_completados={stats.reportes_completados} />
+    </>
   );
 }
