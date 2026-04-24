@@ -360,7 +360,7 @@ export default function RecicladorPage() {
                       key={i}
                       src={url}
                       alt={`Foto ${i + 1}`}
-                      className="w-full aspect-square object-cover rounded-xl"
+                      className="w-full h-24 object-cover rounded-lg"
                     />
                   ))}
                 </div>
