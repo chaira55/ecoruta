@@ -16,22 +16,14 @@ export async function GET(request: NextRequest) {
   const lat = searchParams.get("lat");
   const lng = searchParams.get("lng");
 
-  if (lat && lng) {
-    const { data, error } = await supabase.rpc("reportes_cercanos", {
-      lat: parseFloat(lat),
-      lng: parseFloat(lng),
-      radio_metros: 50000,
-    });
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-    return NextResponse.json(data);
-  }
+  const centerLat = lat ? parseFloat(lat) : 6.2442;
+  const centerLng = lng ? parseFloat(lng) : -75.5812;
 
-  const { data, error } = await supabase
-    .rpc("reportes_cercanos", {
-      lat: 6.2442,
-      lng: -75.5812,
-      radio_metros: 100000,
-    });
+  const { data, error } = await supabase.rpc("reportes_cercanos", {
+    lat: centerLat,
+    lng: centerLng,
+    radio_metros: 999999999, // sin límite de distancia
+  });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json(data);
