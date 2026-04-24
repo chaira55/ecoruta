@@ -32,6 +32,7 @@ export default function RecicladorPage() {
   const [ubicacion, setUbicacion] = useState<[number, number] | null>(null);
   const [cargando, setCargando] = useState(true);
   const [generandoRuta, setGenerandoRuta] = useState(false);
+  const [pesoInput, setPesoInput] = useState("");
 
   // Inicializar mapa
   useEffect(() => {
@@ -324,12 +325,32 @@ export default function RecicladorPage() {
                     </button>
                   )}
                   {seleccionado.estado === "en_camino" && (
-                    <button
-                      onClick={() => actualizarEstado(seleccionado.id, "completado", 5)}
-                      className="flex-1 bg-green-600 text-white py-2 rounded-xl text-sm font-semibold hover:bg-green-700 transition"
-                    >
-                      ✅ Marcar completado
-                    </button>
+                    <div className="flex-1 flex flex-col gap-2">
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="number"
+                          min="0.1"
+                          step="0.1"
+                          placeholder="Peso en kg"
+                          value={pesoInput}
+                          onChange={(e) => setPesoInput(e.target.value)}
+                          className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-400"
+                        />
+                        <span className="text-sm text-gray-500">kg</span>
+                      </div>
+                      <button
+                        onClick={() => {
+                          const kg = parseFloat(pesoInput);
+                          if (!kg || kg <= 0) return;
+                          actualizarEstado(seleccionado.id, "completado", kg);
+                          setPesoInput("");
+                        }}
+                        disabled={!pesoInput || parseFloat(pesoInput) <= 0}
+                        className="w-full bg-green-600 text-white py-2 rounded-xl text-sm font-semibold hover:bg-green-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        ✅ Marcar completado
+                      </button>
+                    </div>
                   )}
                 </div>
               )}
