@@ -44,8 +44,14 @@ export default function FormularioReporte({ tipo, onVolver }: Props) {
     setAnalizandoIA(true);
     try {
       const supabase = createClient();
-      const nombre = `temp-${Date.now()}-${file.name}`;
-      await supabase.storage.from("fotos-reportes").upload(nombre, file);
+      // Sanitizar nombre: sin espacios ni caracteres especiales
+      const ext = file.name.split(".").pop() ?? "jpg";
+      const nombre = `temp-${Date.now()}.${ext}`;
+      const { error: upErr } = await supabase.storage
+        .from("fotos-reportes")
+        .upload(nombre, file);
+      if (upErr) throw upErr;
+
       const { data } = supabase.storage.from("fotos-reportes").getPublicUrl(nombre);
 
       const res = await fetch("/api/vision-ai", {
@@ -224,7 +230,12 @@ export default function FormularioReporte({ tipo, onVolver }: Props) {
                   Tipo de material <span className="text-red-500">*</span>
                   {analizandoIA && (
                     <span className="ml-2 text-xs text-blue-500 font-normal">
-                      detectando con IA...
+                      🤖 detectando con IA...
+                    </span>
+                  )}
+                  {!analizandoIA && material && fotoPreview && (
+                    <span className="ml-2 text-xs text-green-600 font-normal">
+                      ✓ detectado por IA
                     </span>
                   )}
                 </label>
