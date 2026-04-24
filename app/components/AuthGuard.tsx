@@ -42,16 +42,20 @@ export default function AuthGuard({ rolRequerido, children }: Props) {
         await new Promise((r) => setTimeout(r, 500));
       }
 
-      // Si no hay perfil todavía, dejamos pasar (recién registrado)
+      // Si no hay perfil todavía, dejamos pasar
       if (!perfil) {
         setVerificando(false);
         return;
       }
 
+      // Admin puede acceder a cualquier vista
+      if (perfil.rol === "admin") {
+        setVerificando(false);
+        return;
+      }
+
       if (perfil.rol !== rolRequerido) {
-        const destino = perfil.rol === "reciclador" ? "/reciclador"
-          : perfil.rol === "admin" ? "/admin"
-          : "/ciudadano";
+        const destino = perfil.rol === "reciclador" ? "/reciclador" : "/ciudadano";
         router.replace(destino);
         return;
       }

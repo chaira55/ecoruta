@@ -18,18 +18,23 @@ export default function Home() {
 
   useEffect(() => {
     const supabase = createClient();
-    supabase.auth.getUser().then(async ({ data: { user } }) => {
-      if (user) {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (session) {
         const { data } = await supabase
           .from("perfiles")
           .select("nombre, rol")
-          .eq("id", user.id)
+          .eq("id", session.user.id)
           .single();
-        setPerfil(data);
+        if (data) {
+          setPerfil(data);
+          // Ciudadano y reciclador van directo a su vista
+          if (data.rol === "ciudadano") { router.replace("/ciudadano"); return; }
+          if (data.rol === "reciclador") { router.replace("/reciclador"); return; }
+        }
       }
       setCargando(false);
     });
-  }, []);
+  }, [router]);
 
   async function cerrarSesion() {
     const supabase = createClient();
