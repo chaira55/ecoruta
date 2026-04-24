@@ -16,28 +16,50 @@ export default function AuthGuard({ rolRequerido, children }: Props) {
 
   useEffect(() => {
     const supabase = createClient();
-    supabase.auth.getUser().then(async ({ data: { user } }) => {
-      if (!user) {
+
+    async function verificar() {
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (!session) {
         router.replace("/auth");
         return;
       }
-      if (rolRequerido) {
-        const { data: perfil } = await supabase
+
+      if (!rolRequerido) {
+        setVerificando(false);
+        return;
+      }
+
+      // Intentar obtener perfil con reintento (el trigger puede tardar)
+      let perfil = null;
+      for (let i = 0; i < 3; i++) {
+        const { data } = await supabase
           .from("perfiles")
           .select("rol")
-          .eq("id", user.id)
+          .eq("id", session.user.id)
           .single();
-        if (perfil?.rol !== rolRequerido) {
-          // Redirigir a su vista correcta
-          const destino = perfil?.rol === "reciclador" ? "/reciclador"
-            : perfil?.rol === "admin" ? "/admin"
-            : "/ciudadano";
-          router.replace(destino);
-          return;
-        }
+        if (data) { perfil = data; break; }
+        await new Promise((r) => setTimeout(r, 500));
       }
+
+      // Si no hay perfil todavía, dejamos pasar (recién registrado)
+      if (!perfil) {
+        setVerificando(false);
+        return;
+      }
+
+      if (perfil.rol !== rolRequerido) {
+        const destino = perfil.rol === "reciclador" ? "/reciclador"
+          : perfil.rol === "admin" ? "/admin"
+          : "/ciudadano";
+        router.replace(destino);
+        return;
+      }
+
       setVerificando(false);
-    });
+    }
+
+    verificar();
   }, [router, rolRequerido]);
 
   if (verificando) {
