@@ -242,12 +242,12 @@ export default function RecicladorPage() {
           <div className="flex-1 overflow-y-auto">
             {cargando ? (
               <div className="p-4 text-center text-gray-400 text-sm">Cargando reportes...</div>
-            ) : reportes.length === 0 ? (
+            ) : reportes.filter((r) => r.estado !== "completado").length === 0 ? (
               <div className="p-4 text-center text-gray-400 text-sm">
                 No hay solicitudes cercanas
               </div>
             ) : (
-              reportes.map((r) => (
+              reportes.filter((r) => r.estado !== "completado").map((r) => (
                 <button
                   key={r.id}
                   onClick={() => {
