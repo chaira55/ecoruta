@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import FormularioReporte from "./FormularioReporte";
+import StatsWidget from "../components/StatsWidget";
 
 export default function CiudadanoPage() {
   const [tipo, setTipo] = useState<"emergencia" | "solicitud" | null>(null);
@@ -36,7 +37,9 @@ export default function CiudadanoPage() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 w-full max-w-xl">
+      <StatsWidget />
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 w-full max-w-xl mt-8">
         {/* Emergencia */}
         <button
           onClick={() => setTipo("emergencia")}

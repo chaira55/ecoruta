@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import type { Material } from "@/lib/types";
 
@@ -29,9 +29,19 @@ export default function FormularioReporte({ tipo, onVolver }: Props) {
   const [enviando, setEnviando] = useState(false);
   const [exito, setExito] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [statsGlobal, setStatsGlobal] = useState<{ total_kg: number; co2_kg: number } | null>(null);
   const inputFotoRef = useRef<HTMLInputElement>(null);
 
   const esEmergencia = tipo === "emergencia";
+
+  useEffect(() => {
+    if (exito) {
+      fetch("/api/stats")
+        .then((r) => r.json())
+        .then((d) => setStatsGlobal(d))
+        .catch(() => null);
+    }
+  }, [exito]);
 
   function toggleMaterial(m: Material) {
     setMateriales((prev) =>
@@ -178,6 +188,25 @@ export default function FormularioReporte({ tipo, onVolver }: Props) {
             ? "El punto crítico fue registrado. Las autoridades serán notificadas."
             : "Tu solicitud está activa. Un reciclador cercano la verá pronto."}
         </p>
+
+        {statsGlobal && (
+          <div className="bg-white rounded-2xl shadow-md p-5 mb-6 max-w-xs w-full">
+            <p className="text-xs font-semibold text-green-700 uppercase tracking-wide mb-3">
+              Impacto acumulado en Medellín
+            </p>
+            <div className="flex justify-around">
+              <div>
+                <p className="text-2xl font-bold text-green-700">{statsGlobal.total_kg} kg</p>
+                <p className="text-xs text-gray-500">desviados del relleno</p>
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-emerald-600">{statsGlobal.co2_kg} kg</p>
+                <p className="text-xs text-gray-500">CO₂ evitado</p>
+              </div>
+            </div>
+          </div>
+        )}
+
         <button
           onClick={onVolver}
           className="bg-green-600 text-white px-6 py-3 rounded-xl font-semibold hover:bg-green-700 transition"

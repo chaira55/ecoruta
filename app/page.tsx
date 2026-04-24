@@ -1,4 +1,5 @@
 import Link from "next/link";
+import StatsWidget from "./components/StatsWidget";
 
 export default function Home() {
   return (
@@ -57,12 +58,8 @@ export default function Home() {
         </Link>
       </div>
 
-      {/* Footer stat */}
-      <div className="mt-12 bg-white/70 backdrop-blur rounded-xl px-6 py-3 shadow-sm">
-        <p className="text-sm text-green-700 font-medium">
-          🌿 Medellín avanza hacia cero residuos en relleno sanitario
-        </p>
-      </div>
+      {/* Stats en vivo */}
+      <StatsWidget />
     </main>
   );
 }
