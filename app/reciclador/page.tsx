@@ -61,6 +61,8 @@ export default function RecicladorPage() {
 
     map.current.on("load", () => {
       obtenerUbicacion();
+      // Pintar pines con datos ya cargados
+      if (reportes.length > 0) pintarPines(reportes);
     });
 
     return () => {
@@ -99,7 +101,7 @@ export default function RecicladorPage() {
       }
       const lista = Array.isArray(data) ? data : [];
       setReportes(lista);
-      pintarPines(lista);
+      if (map.current?.loaded()) pintarPines(lista);
     } catch (e) {
       setErrorApi(e instanceof Error ? e.message : "Error de red");
     } finally {
