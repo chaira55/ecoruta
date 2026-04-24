@@ -23,13 +23,17 @@ export async function POST(request: NextRequest) {
           },
           {
             type: "text",
-            text: `Analiza esta imagen y responde SOLO con JSON válido, sin texto adicional:
-{
-  "es_residuo": true/false,
-  "tipo_material": "carton" | "plastico" | "vidrio" | "metal" | "organico" | null,
-  "confianza": "alta" | "media" | "baja"
-}
-Si no hay residuos visibles, es_residuo debe ser false y tipo_material null.`,
+            text: `Analiza esta imagen de residuos reciclables. Responde ÚNICAMENTE con un objeto JSON, sin markdown, sin explicaciones, sin texto adicional.
+
+El JSON debe tener exactamente esta estructura:
+{"es_residuo":true,"tipo_material":"plastico","confianza":"alta"}
+
+Reglas:
+- es_residuo: true si ves cualquier residuo o material reciclable, false si la imagen no tiene residuos
+- tipo_material debe ser exactamente una de estas palabras (sin tildes, sin mayúsculas): carton, plastico, vidrio, metal, organico
+- Si hay varios tipos, elige el predominante
+- confianza: alta, media o baja
+- Si no hay residuos: {"es_residuo":false,"tipo_material":null,"confianza":"alta"}`,
           },
         ],
       },
@@ -38,8 +42,11 @@ Si no hay residuos visibles, es_residuo debe ser false y tipo_material null.`,
 
   try {
     const text =
-      message.content[0].type === "text" ? message.content[0].text : "";
-    const result = JSON.parse(text);
+      message.content[0].type === "text" ? message.content[0].text.trim() : "";
+    // Extraer JSON aunque venga con texto alrededor
+    const match = text.match(/\{[\s\S]*\}/);
+    if (!match) throw new Error("No JSON found");
+    const result = JSON.parse(match[0]);
     return NextResponse.json(result);
   } catch {
     return NextResponse.json(
