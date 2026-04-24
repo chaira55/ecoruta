@@ -16,6 +16,7 @@ interface ReporteCercano {
   material: string | null;
   estado: EstadoReporte;
   foto_url: string;
+  fotos_extra: string[];
   nota: string | null;
   lat: number;
   lng: number;
@@ -350,14 +351,19 @@ export default function RecicladorPage() {
                 <button onClick={() => setSeleccionado(null)} className="text-gray-400 hover:text-gray-600 text-lg">×</button>
               </div>
 
-              {/* Foto del reporte */}
+              {/* Fotos del reporte */}
               {seleccionado.foto_url && (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={seleccionado.foto_url}
-                  alt="Foto del reporte"
-                  className="w-full max-h-48 object-contain rounded-xl mb-3 bg-gray-50"
-                />
+                <div className={`grid gap-2 mb-3 ${[...(seleccionado.fotos_extra ?? []), seleccionado.foto_url].length > 1 ? "grid-cols-2" : "grid-cols-1"}`}>
+                  {[seleccionado.foto_url, ...(seleccionado.fotos_extra ?? [])].map((url, i) => (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      key={i}
+                      src={url}
+                      alt={`Foto ${i + 1}`}
+                      className="w-full aspect-square object-cover rounded-xl"
+                    />
+                  ))}
+                </div>
               )}
 
               {seleccionado.nota && (

@@ -18,8 +18,8 @@ const MATERIALES: { valor: Material; etiqueta: string; emoji: string }[] = [
 ];
 
 export default function FormularioReporte({ tipo, onVolver }: Props) {
-  const [foto, setFoto] = useState<File | null>(null);
-  const [fotoPreview, setFotoPreview] = useState<string | null>(null);
+  const [fotos, setFotos] = useState<File[]>([]);
+  const [fotoPreviews, setFotoPreviews] = useState<string[]>([]);
   const [materiales, setMateriales] = useState<Material[]>([]);
   const [iaDetectado, setIaDetectado] = useState<string | null>(null);
   const [nota, setNota] = useState("");
@@ -31,6 +31,7 @@ export default function FormularioReporte({ tipo, onVolver }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [statsGlobal, setStatsGlobal] = useState<{ total_kg: number; co2_kg: number } | null>(null);
   const inputFotoRef = useRef<HTMLInputElement>(null);
+  const MAX_FOTOS = 3;
 
   const esEmergencia = tipo === "emergencia";
 
@@ -52,11 +53,16 @@ export default function FormularioReporte({ tipo, onVolver }: Props) {
   function handleFoto(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-    setFoto(file);
-    setFotoPreview(URL.createObjectURL(file));
+    if (fotos.length >= MAX_FOTOS) return;
+    setFotos((prev) => [...prev, file]);
+    setFotoPreviews((prev) => [...prev, URL.createObjectURL(file)]);
     setIaDetectado(null);
-    // IA deshabilitada temporalmente (requiere créditos Anthropic)
-    // if (!esEmergencia) analizarConIA(file);
+    e.target.value = "";
+  }
+
+  function quitarFoto(index: number) {
+    setFotos((prev) => prev.filter((_, i) => i !== index));
+    setFotoPreviews((prev) => prev.filter((_, i) => i !== index));
   }
 
   // Comprime la imagen a máx 800px y calidad 0.7 para evitar límite de tamaño
@@ -131,7 +137,7 @@ export default function FormularioReporte({ tipo, onVolver }: Props) {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!foto) return setError("Agrega una foto del reporte.");
+    if (fotos.length === 0) return setError("Agrega al menos una foto del reporte.");
     if (!ubicacion) return setError("Comparte tu ubicación antes de enviar.");
     if (!esEmergencia && materiales.length === 0)
       return setError("Selecciona al menos un tipo de material.");
@@ -142,29 +148,32 @@ export default function FormularioReporte({ tipo, onVolver }: Props) {
     try {
       const supabase = createClient();
 
-      // Sanitizar nombre del archivo
-      const ext = foto.name.split(".").pop() ?? "jpg";
-      const nombreArchivo = `reporte-${Date.now()}.${ext}`;
-      const { error: uploadError } = await supabase.storage
-        .from("fotos-reportes")
-        .upload(nombreArchivo, foto);
-      if (uploadError) throw uploadError;
-
-      const { data: urlData } = supabase.storage
-        .from("fotos-reportes")
-        .getPublicUrl(nombreArchivo);
+      // Subir todas las fotos
+      const urls: string[] = [];
+      for (const foto of fotos) {
+        const ext = foto.name.split(".").pop() ?? "jpg";
+        const nombreArchivo = `reporte-${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+        const { error: uploadError } = await supabase.storage
+          .from("fotos-reportes")
+          .upload(nombreArchivo, foto);
+        if (uploadError) throw uploadError;
+        const { data: urlData } = supabase.storage
+          .from("fotos-reportes")
+          .getPublicUrl(nombreArchivo);
+        urls.push(urlData.publicUrl);
+      }
 
       const res = await fetch("/api/reportes", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           tipo,
-          // Guardamos el primero como material principal, el resto en nota
           material: esEmergencia ? null : materiales[0],
           materiales_extra: materiales.slice(1),
           lat: ubicacion.lat,
           lng: ubicacion.lng,
-          foto_url: urlData.publicUrl,
+          foto_url: urls[0],
+          fotos_extra: urls.slice(1),
           nota: nota || null,
         }),
       });
@@ -240,38 +249,37 @@ export default function FormularioReporte({ tipo, onVolver }: Props) {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-5">
-            {/* Foto */}
+            {/* Fotos — hasta 3 */}
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Foto <span className="text-red-500">*</span>
+                Fotos <span className="text-red-500">*</span>
+                <span className="ml-1 text-xs font-normal text-gray-400">({fotoPreviews.length}/{MAX_FOTOS})</span>
               </label>
-              {fotoPreview ? (
-                <div className="relative">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={fotoPreview} alt="Preview" className="w-full h-48 object-cover rounded-xl" />
-                  {analizandoIA && (
-                    <div className="absolute inset-0 bg-black/50 rounded-xl flex items-center justify-center">
-                      <p className="text-white text-sm font-medium">🤖 Analizando con IA...</p>
-                    </div>
-                  )}
+              <div className="grid grid-cols-3 gap-2">
+                {fotoPreviews.map((preview, i) => (
+                  <div key={i} className="relative aspect-square">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={preview} alt={`Foto ${i + 1}`} className="w-full h-full object-cover rounded-xl" />
+                    <button
+                      type="button"
+                      onClick={() => quitarFoto(i)}
+                      className="absolute top-1 right-1 bg-white rounded-full w-6 h-6 flex items-center justify-center text-xs text-gray-600 shadow font-bold"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+                {fotoPreviews.length < MAX_FOTOS && (
                   <button
                     type="button"
-                    onClick={() => { setFoto(null); setFotoPreview(null); setMateriales([]); setIaDetectado(null); }}
-                    className="absolute top-2 right-2 bg-white rounded-full px-2 py-1 text-xs text-gray-600 shadow"
+                    onClick={() => inputFotoRef.current?.click()}
+                    className="aspect-square border-2 border-dashed border-gray-300 rounded-xl flex flex-col items-center justify-center text-gray-400 hover:border-green-400 hover:text-green-500 transition"
                   >
-                    Cambiar
+                    <span className="text-2xl">📷</span>
+                    <span className="text-xs mt-1">Agregar</span>
                   </button>
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => inputFotoRef.current?.click()}
-                  className="w-full h-36 border-2 border-dashed border-gray-300 rounded-xl flex flex-col items-center justify-center text-gray-400 hover:border-green-400 hover:text-green-500 transition"
-                >
-                  <span className="text-3xl mb-1">📷</span>
-                  <span className="text-sm">Toca para tomar foto</span>
-                </button>
-              )}
+                )}
+              </div>
               <input
                 ref={inputFotoRef}
                 type="file"

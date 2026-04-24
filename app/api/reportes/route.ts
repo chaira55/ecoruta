@@ -40,6 +40,7 @@ export async function POST(request: NextRequest) {
       material: body.material ?? null,
       ubicacion: `POINT(${body.lng} ${body.lat})`,
       foto_url: body.foto_url,
+      fotos_extra: body.fotos_extra ?? [],
       nota: body.nota ?? null,
       estado: "pendiente",
     })
