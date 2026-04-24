@@ -355,7 +355,7 @@ export default function RecicladorPage() {
                 <img
                   src={seleccionado.foto_url}
                   alt="Foto del reporte"
-                  className="w-full h-32 object-cover rounded-xl mb-3"
+                  className="w-full max-h-48 object-contain rounded-xl mb-3 bg-gray-50"
                 />
               )}
 
