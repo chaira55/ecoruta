@@ -7,6 +7,7 @@ import type { EstadoReporte } from "@/lib/types";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import Link from "next/link";
+import AuthGuard from "../components/AuthGuard";
 
 interface ReporteCercano {
   id: string;
@@ -209,6 +210,7 @@ export default function RecicladorPage() {
   const emergencias = reportes.filter((r) => r.tipo === "emergencia");
 
   return (
+    <AuthGuard rolRequerido="reciclador">
     <div className="h-screen flex flex-col">
       {/* Header */}
       <div className="bg-white border-b px-4 py-3 flex items-center justify-between shadow-sm z-10">
@@ -404,5 +406,6 @@ export default function RecicladorPage() {
         </div>
       </div>
     </div>
+    </AuthGuard>
   );
 }

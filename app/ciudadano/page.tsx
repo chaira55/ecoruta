@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import FormularioReporte from "./FormularioReporte";
 import StatsWidget from "../components/StatsWidget";
+import AuthGuard from "../components/AuthGuard";
 
 export default function CiudadanoPage() {
   const [tipo, setTipo] = useState<"emergencia" | "solicitud" | null>(null);
@@ -11,14 +12,14 @@ export default function CiudadanoPage() {
 
   if (tipo) {
     return (
-      <FormularioReporte
-        tipo={tipo}
-        onVolver={() => setTipo(null)}
-      />
+      <AuthGuard rolRequerido="ciudadano">
+        <FormularioReporte tipo={tipo} onVolver={() => setTipo(null)} />
+      </AuthGuard>
     );
   }
 
   return (
+    <AuthGuard rolRequerido="ciudadano">
     <main className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-100 flex flex-col items-center justify-center p-6">
       <button
         onClick={() => router.push("/")}
@@ -69,5 +70,6 @@ export default function CiudadanoPage() {
         </button>
       </div>
     </main>
+    </AuthGuard>
   );
 }

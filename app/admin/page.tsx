@@ -7,6 +7,7 @@ import type { Material } from "@/lib/types";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import Link from "next/link";
+import AuthGuard from "../components/AuthGuard";
 
 interface Reporte {
   id: string;
@@ -214,6 +215,7 @@ export default function AdminPage() {
   ] : [];
 
   return (
+    <AuthGuard rolRequerido="admin">
     <div className="h-screen flex flex-col bg-gray-950">
       {/* Header */}
       <div className="bg-gray-900 border-b border-gray-800 px-4 py-3 flex items-center justify-between">
@@ -305,5 +307,6 @@ export default function AdminPage() {
         )}
       </div>
     </div>
+    </AuthGuard>
   );
 }
