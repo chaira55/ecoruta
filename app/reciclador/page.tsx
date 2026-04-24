@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { MEDELLIN_CENTER, MAPBOX_TOKEN, PIN_COLORS } from "@/lib/mapbox";
 import type { EstadoReporte } from "@/lib/types";
@@ -24,7 +24,8 @@ interface ReporteCercano {
 }
 
 export default function RecicladorPage() {
-  const mapContainer = useRef<HTMLDivElement>(null);
+  const [mapContainerEl, setMapContainerEl] = useState<HTMLDivElement | null>(null);
+  const mapContainerRef = useCallback((node: HTMLDivElement | null) => setMapContainerEl(node), []);
   const map = useRef<mapboxgl.Map | null>(null);
   const markersRef = useRef<Record<string, mapboxgl.Marker>>({});
   const routeLayerRef = useRef(false);
@@ -45,13 +46,13 @@ export default function RecicladorPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Inicializar mapa
+  // Inicializar mapa cuando el container esté disponible
   useEffect(() => {
-    if (map.current || !mapContainer.current) return;
+    if (map.current || !mapContainerEl) return;
     mapboxgl.accessToken = MAPBOX_TOKEN;
 
     map.current = new mapboxgl.Map({
-      container: mapContainer.current,
+      container: mapContainerEl,
       style: "mapbox://styles/mapbox/streets-v12",
       center: MEDELLIN_CENTER,
       zoom: 12,
@@ -61,8 +62,6 @@ export default function RecicladorPage() {
 
     map.current.on("load", () => {
       obtenerUbicacion();
-      // Pintar pines con datos ya cargados
-      if (reportes.length > 0) pintarPines(reportes);
     });
 
     return () => {
@@ -70,7 +69,7 @@ export default function RecicladorPage() {
       map.current = null;
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [mapContainerEl]);
 
   function obtenerUbicacion() {
     navigator.geolocation.getCurrentPosition(
@@ -328,7 +327,7 @@ export default function RecicladorPage() {
 
         {/* Mapa */}
         <div className="flex-1 relative">
-          <div ref={mapContainer} className="w-full h-full" />
+          <div ref={mapContainerRef} className="w-full h-full" />
 
           {/* Panel de detalle */}
           {seleccionado && (
