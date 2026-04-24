@@ -230,6 +230,7 @@ export default function RecicladorPage() {
   const emergencias = reportes.filter((r) => r.tipo === "emergencia");
 
   return (
+    <>
     <AuthGuard rolRequerido="reciclador">
     <div className="h-screen flex flex-col">
       {/* Header */}
@@ -459,5 +460,6 @@ export default function RecicladorPage() {
         </button>
       </div>
     )}
+    </>
   );
 }
