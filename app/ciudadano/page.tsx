@@ -1,14 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import FormularioReporte from "./FormularioReporte";
 import StatsWidget from "../components/StatsWidget";
 import AuthGuard from "../components/AuthGuard";
+import UserMenu from "../components/UserMenu";
 
 export default function CiudadanoPage() {
   const [tipo, setTipo] = useState<"emergencia" | "solicitud" | null>(null);
-  const router = useRouter();
 
   if (tipo) {
     return (
@@ -21,12 +20,9 @@ export default function CiudadanoPage() {
   return (
     <AuthGuard rolRequerido="ciudadano">
     <main className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-100 flex flex-col items-center justify-center p-6">
-      <button
-        onClick={() => router.push("/")}
-        className="absolute top-4 left-4 text-sm text-green-700 hover:text-green-900"
-      >
-        ← Inicio
-      </button>
+      <div className="absolute top-4 right-4">
+        <UserMenu />
+      </div>
 
       <div className="text-center mb-10">
         <div className="text-5xl mb-3">🏘️</div>

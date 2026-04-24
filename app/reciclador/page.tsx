@@ -8,6 +8,7 @@ import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import Link from "next/link";
 import AuthGuard from "../components/AuthGuard";
+import UserMenu from "../components/UserMenu";
 
 interface ReporteCercano {
   id: string;
@@ -227,6 +228,7 @@ export default function RecicladorPage() {
               {emergencias.length} emergencias
             </span>
           )}
+          <UserMenu />
         </div>
       </div>
 

@@ -8,6 +8,7 @@ import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import Link from "next/link";
 import AuthGuard from "../components/AuthGuard";
+import UserMenu from "../components/UserMenu";
 
 interface Reporte {
   id: string;
@@ -223,12 +224,15 @@ export default function AdminPage() {
           <Link href="/" className="text-gray-500 hover:text-gray-300 text-sm">←</Link>
           <span className="text-lg font-bold text-white">📊 Panel Administrador</span>
         </div>
-        <button
-          onClick={cargarDatos}
-          className="text-xs text-gray-400 hover:text-white border border-gray-700 px-3 py-1 rounded-lg transition"
-        >
-          Actualizar
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={cargarDatos}
+            className="text-xs text-gray-400 hover:text-white border border-gray-700 px-3 py-1 rounded-lg transition"
+          >
+            Actualizar
+          </button>
+          <UserMenu />
+        </div>
       </div>
 
       {/* KPIs */}
