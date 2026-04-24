@@ -45,7 +45,8 @@ export default function FormularioReporte({ tipo, onVolver }: Props) {
     setFoto(file);
     setFotoPreview(URL.createObjectURL(file));
     setIaDetectado(null);
-    if (!esEmergencia) analizarConIA(file);
+    // IA deshabilitada temporalmente (requiere créditos Anthropic)
+    // if (!esEmergencia) analizarConIA(file);
   }
 
   // Comprime la imagen a máx 800px y calidad 0.7 para evitar límite de tamaño
