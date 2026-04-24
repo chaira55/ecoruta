@@ -48,35 +48,48 @@ export default function FormularioReporte({ tipo, onVolver }: Props) {
     if (!esEmergencia) analizarConIA(file);
   }
 
+  // Comprime la imagen a máx 800px y calidad 0.7 para evitar límite de tamaño
+  async function comprimirImagen(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      const url = URL.createObjectURL(file);
+      img.onload = () => {
+        const MAX = 800;
+        let { width, height } = img;
+        if (width > MAX || height > MAX) {
+          if (width > height) { height = Math.round((height * MAX) / width); width = MAX; }
+          else { width = Math.round((width * MAX) / height); height = MAX; }
+        }
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d")!;
+        ctx.drawImage(img, 0, 0, width, height);
+        URL.revokeObjectURL(url);
+        const dataUrl = canvas.toDataURL("image/jpeg", 0.7);
+        resolve(dataUrl.split(",")[1]);
+      };
+      img.onerror = reject;
+      img.src = url;
+    });
+  }
+
   async function analizarConIA(file: File) {
     setAnalizandoIA(true);
     try {
-      // Convertir imagen a base64 directamente en el browser
-      const base64 = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => {
-          const result = reader.result as string;
-          // Quitar el prefijo "data:image/jpeg;base64,"
-          resolve(result.split(",")[1]);
-        };
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-      });
-
-      const mediaType = file.type || "image/jpeg";
+      const base64 = await comprimirImagen(file);
 
       const res = await fetch("/api/vision-ai", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ base64, media_type: mediaType }),
+        body: JSON.stringify({ base64, media_type: "image/jpeg" }),
       });
 
       const resultado = await res.json();
 
       if (resultado.tipo_material) {
-        const mat = resultado.tipo_material as Material;
-        setMateriales([mat]);
-        setIaDetectado(mat);
+        setMateriales([resultado.tipo_material as Material]);
+        setIaDetectado(resultado.tipo_material);
       } else {
         setIaDetectado("no_detectado");
       }
@@ -253,6 +266,9 @@ export default function FormularioReporte({ tipo, onVolver }: Props) {
                   )}
                   {!analizandoIA && iaDetectado === "no_detectado" && (
                     <span className="text-xs text-gray-400">IA no detectó material</span>
+                  )}
+                  {!analizandoIA && iaDetectado === "error" && (
+                    <span className="text-xs text-red-400">IA no disponible, selecciona manualmente</span>
                   )}
                 </div>
                 <div className="grid grid-cols-2 gap-2">
