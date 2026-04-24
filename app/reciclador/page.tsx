@@ -86,10 +86,11 @@ export default function RecicladorPage() {
   async function cargarReportes(lat: number, lng: number) {
     setCargando(true);
     try {
-      const res = await fetch(`/api/reportes?lat=${lat}&lng=${lng}`);
+      const res = await fetch(`/api/reportes?lat=${lat}&lng=${lng}`, { credentials: "include" });
       const data = await res.json();
-      setReportes(data ?? []);
-      pintarPines(data ?? []);
+      const lista = Array.isArray(data) ? data : [];
+      setReportes(lista);
+      pintarPines(lista);
     } finally {
       setCargando(false);
     }

@@ -58,7 +58,7 @@ export default function AdminPage() {
   async function cargarDatos() {
     setCargando(true);
     try {
-      const res = await fetch("/api/reportes");
+      const res = await fetch("/api/reportes", { credentials: "include" });
       const data = await res.json();
 
       // Mapear lat/lng desde la API
