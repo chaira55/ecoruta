@@ -50,6 +50,7 @@ export default function RecicladorPage() {
   const [puntosEnRuta, setPuntosEnRuta] = useState<string[]>([]);
   const [tabActiva, setTabActiva] = useState<"disponibles" | "mi_ruta">("disponibles");
   const [pesosInput, setPesosInput] = useState<Record<string, string>>({});
+  const [panelMobileAbierto, setPanelMobileAbierto] = useState(false);
 
   useEffect(() => {
     const supabase = createClient();
@@ -327,37 +328,61 @@ export default function RecicladorPage() {
     <AuthGuard rolRequerido="reciclador">
     <div className="h-screen flex flex-col">
       {/* Header */}
-      <div className="bg-white border-b px-4 py-3 flex items-center justify-between shadow-sm z-10">
-        <div className="flex items-center gap-2">
-          <span className="text-lg font-bold text-gray-800">🚴 Vista Reciclador</span>
-        </div>
-        <div className="flex items-center gap-3 text-sm">
+      <div className="bg-white border-b px-3 py-2 md:px-4 md:py-3 flex items-center justify-between shadow-sm z-10">
+        <span className="text-base md:text-lg font-bold text-gray-800">🚴 Reciclador</span>
+        <div className="flex items-center gap-2 text-xs md:text-sm">
           <span className="bg-green-100 text-green-700 px-2 py-1 rounded-full font-medium">
-            {solicitudesPendientes.length} solicitudes
+            {solicitudesPendientes.length} <span className="hidden sm:inline">solicitudes</span>
           </span>
           {emergencias.length > 0 && (
             <span className="bg-red-100 text-red-700 px-2 py-1 rounded-full font-medium">
-              {emergencias.length} emergencias
+              {emergencias.length} <span className="hidden sm:inline">emergencias</span>
             </span>
           )}
           {puntosEnRuta.length > 0 && (
-            <span className="bg-blue-100 text-blue-700 px-2 py-1 rounded-full font-medium">
+            <span className="hidden md:inline bg-blue-100 text-blue-700 px-2 py-1 rounded-full font-medium">
               📋 {puntosEnRuta.length} en mi ruta
             </span>
           )}
           <button
             onClick={() => { setStatsPanel(true); cargarStatsReciclador(); }}
-            className="text-gray-500 hover:text-green-600 border border-gray-200 px-3 py-1 rounded-xl transition text-xs font-medium"
+            className="text-gray-500 hover:text-green-600 border border-gray-200 px-2 md:px-3 py-1 rounded-xl transition font-medium"
           >
-            🏆 Mi impacto
+            🏆 <span className="hidden md:inline">Mi impacto</span>
           </button>
           <UserMenu />
         </div>
       </div>
 
-      <div className="flex flex-1 overflow-hidden">
-        {/* Panel lateral */}
-        <div className="w-80 bg-white border-r flex flex-col overflow-hidden">
+      <div className="flex flex-1 overflow-hidden relative">
+        {/* Backdrop móvil */}
+        {panelMobileAbierto && (
+          <div
+            className="md:hidden fixed inset-0 bg-black/40 z-20"
+            onClick={() => setPanelMobileAbierto(false)}
+          />
+        )}
+
+        {/* Panel lateral — bottom sheet en móvil, sidebar en desktop */}
+        <div
+          className={[
+            "bg-white border-r flex flex-col overflow-hidden",
+            // móvil: posición fija como bottom sheet
+            "fixed md:relative",
+            "inset-x-0 bottom-0 md:inset-auto",
+            "w-full md:w-80",
+            "h-[78vh] md:h-auto",
+            "z-30 md:z-auto",
+            "rounded-t-2xl md:rounded-none",
+            "shadow-2xl md:shadow-none",
+            "transition-transform duration-300",
+            panelMobileAbierto ? "translate-y-0" : "translate-y-full md:translate-y-0",
+          ].join(" ")}
+        >
+          {/* Drag handle solo en móvil */}
+          <div className="md:hidden flex flex-col items-center pt-2 pb-1 cursor-pointer" onClick={() => setPanelMobileAbierto(false)}>
+            <div className="w-10 h-1 bg-gray-300 rounded-full" />
+          </div>
 
           {/* Tabs */}
           <div className="flex border-b">
@@ -628,6 +653,22 @@ export default function RecicladorPage() {
         {/* Mapa */}
         <div className="flex-1 relative">
           <div ref={mapContainerRef} className="w-full h-full" />
+
+          {/* FAB móvil — abre el panel */}
+          {!panelMobileAbierto && (
+            <button
+              onClick={() => setPanelMobileAbierto(true)}
+              className="md:hidden fixed bottom-5 left-1/2 -translate-x-1/2 z-20 bg-green-600 text-white rounded-full px-5 py-3 shadow-xl flex items-center gap-2 text-sm font-semibold"
+            >
+              <span>📋</span>
+              <span>Ver puntos</span>
+              {puntosEnRuta.length > 0 && (
+                <span className="bg-blue-500 text-white text-xs px-2 py-0.5 rounded-full">
+                  {puntosEnRuta.length}
+                </span>
+              )}
+            </button>
+          )}
 
           {/* Panel de detalle (fotos + nota) */}
           {seleccionado && (
