@@ -49,6 +49,10 @@ export default function AdminPage() {
   // Refrescar datos al entrar a la tabla
   useEffect(() => {
     if (tabActivo === "tabla") cargarDatos();
+    // Al volver al mapa, forzar resize para que ocupe el espacio correcto
+    if (tabActivo === "mapa") {
+      setTimeout(() => map.current?.resize(), 50);
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tabActivo]);
 
@@ -361,14 +365,13 @@ export default function AdminPage() {
                   <th className="px-4 py-3 font-medium">Estado</th>
                   <th className="px-4 py-3 font-medium">Peso (kg)</th>
                   <th className="px-4 py-3 font-medium">Fecha</th>
-                  <th className="px-4 py-3 font-medium">Acciones</th>
                 </tr>
               </thead>
               <tbody>
                 {reportesFiltrados
                   .filter((r) => (filtroEstado === "todos" || r.estado === filtroEstado) && (filtroTipo === "todos" || r.tipo === filtroTipo))
                   .map((r, i) => (
-                    <tr key={r.id} className={`border-b border-gray-800 hover:bg-gray-900/50 ${i % 2 === 0 ? "bg-gray-950" : "bg-gray-900/30"}`}>
+                    <tr key={r.id} className={`border-b border-gray-800 ${i % 2 === 0 ? "bg-gray-950" : "bg-gray-900/30"}`}>
                       <td className="px-4 py-3 text-white">
                         {r.tipo === "emergencia" ? "🚨 Emergencia" : "♻️ Solicitud"}
                       </td>
@@ -385,20 +388,6 @@ export default function AdminPage() {
                       <td className="px-4 py-3 text-gray-300">{r.peso_kg ?? "—"}</td>
                       <td className="px-4 py-3 text-gray-400 text-xs">
                         {new Date(r.creado_en).toLocaleDateString("es-CO", { day: "numeric", month: "short", year: "numeric" })}
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex gap-1">
-                          {r.estado === "pendiente" && (
-                            <button onClick={() => cambiarEstadoAdmin(r.id, "en_camino")} className="px-2 py-1 bg-blue-800 text-blue-200 rounded-lg text-xs hover:bg-blue-700 transition">
-                              En camino
-                            </button>
-                          )}
-                          {r.estado !== "completado" && (
-                            <button onClick={() => cambiarEstadoAdmin(r.id, "completado")} className="px-2 py-1 bg-green-800 text-green-200 rounded-lg text-xs hover:bg-green-700 transition">
-                              Completar
-                            </button>
-                          )}
-                        </div>
                       </td>
                     </tr>
                   ))}
