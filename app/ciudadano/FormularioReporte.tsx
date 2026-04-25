@@ -54,10 +54,15 @@ export default function FormularioReporte({ tipo, onVolver }: Props) {
     const file = e.target.files?.[0];
     if (!file) return;
     if (fotos.length >= MAX_FOTOS) return;
+    const esPrimeraFoto = fotos.length === 0;
     setFotos((prev) => [...prev, file]);
     setFotoPreviews((prev) => [...prev, URL.createObjectURL(file)]);
     setIaDetectado(null);
     e.target.value = "";
+    // Analizar con IA solo la primera foto y solo en solicitudes
+    if (esPrimeraFoto && !esEmergencia) {
+      analizarConIA(file);
+    }
   }
 
   function quitarFoto(index: number) {
