@@ -80,25 +80,42 @@ export default function RecicladorPage() {
     });
 
     return () => {
+      if (watchIdRef.current !== null) {
+        navigator.geolocation.clearWatch(watchIdRef.current);
+        watchIdRef.current = null;
+      }
       map.current?.remove();
       map.current = null;
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mapContainerEl]);
 
+  const miMarkerRef = useRef<mapboxgl.Marker | null>(null);
+  const watchIdRef = useRef<number | null>(null);
+
   function obtenerUbicacion() {
-    navigator.geolocation.getCurrentPosition(
+    if (watchIdRef.current !== null) return; // ya está activo
+
+    watchIdRef.current = navigator.geolocation.watchPosition(
       (pos) => {
         const coords: [number, number] = [pos.coords.longitude, pos.coords.latitude];
         setUbicacion(coords);
-        map.current?.flyTo({ center: coords, zoom: 13 });
-        new mapboxgl.Marker({ color: "#6366f1" })
-          .setLngLat(coords)
-          .setPopup(new mapboxgl.Popup().setText("Tú estás aquí"))
-          .addTo(map.current!);
+
+        if (!miMarkerRef.current) {
+          // Primera vez: crear el marcador y centrar el mapa
+          miMarkerRef.current = new mapboxgl.Marker({ color: "#6366f1" })
+            .setLngLat(coords)
+            .setPopup(new mapboxgl.Popup().setText("Tú estás aquí"))
+            .addTo(map.current!);
+          map.current?.flyTo({ center: coords, zoom: 14 });
+        } else {
+          // Actualizaciones siguientes: mover el marcador suavemente
+          miMarkerRef.current.setLngLat(coords);
+          map.current?.easeTo({ center: coords, duration: 1000 });
+        }
       },
       () => {},
-      { enableHighAccuracy: true }
+      { enableHighAccuracy: true, maximumAge: 2000, timeout: 10000 }
     );
   }
 
