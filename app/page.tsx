@@ -105,6 +105,13 @@ export default function Home() {
         </div>
       </section>
 
+      {/* Link leaderboard */}
+      <div className="text-center mb-4">
+        <Link href="/leaderboard" className="inline-flex items-center gap-2 text-sm text-green-700 hover:text-green-900 font-medium underline underline-offset-2">
+          🏆 Ver ranking de recicladores
+        </Link>
+      </div>
+
       {/* Stats en vivo */}
       {stats && (
         <section className="max-w-3xl mx-auto px-6 mb-14">

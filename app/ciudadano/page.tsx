@@ -1,11 +1,14 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import FormularioReporte from "./FormularioReporte";
 import StatsWidget from "../components/StatsWidget";
 import AuthGuard from "../components/AuthGuard";
 import UserMenu from "../components/UserMenu";
 import { createClient } from "@/lib/supabase/client";
+import { MEDELLIN_CENTER, MAPBOX_TOKEN } from "@/lib/mapbox";
+import mapboxgl from "mapbox-gl";
+import "mapbox-gl/dist/mapbox-gl.css";
 
 interface MiReporte {
   id: string;
@@ -26,7 +29,10 @@ const ESTADO_LABEL: Record<string, { label: string; color: string; emoji: string
 
 export default function CiudadanoPage() {
   const [tipo, setTipo] = useState<"emergencia" | "solicitud" | null>(null);
-  const [tab, setTab] = useState<"nuevo" | "historial">("nuevo");
+  const [tab, setTab] = useState<"nuevo" | "historial" | "mapa">("nuevo");
+  const map = useRef<mapboxgl.Map | null>(null);
+  const [mapContainerEl, setMapContainerEl] = useState<HTMLDivElement | null>(null);
+  const mapContainerRef = useCallback((node: HTMLDivElement | null) => setMapContainerEl(node), []);
   const [misReportes, setMisReportes] = useState<MiReporte[]>([]);
   const [cargandoHistorial, setCargandoHistorial] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
@@ -52,6 +58,51 @@ export default function CiudadanoPage() {
     return () => clearInterval(interval);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId, prevEstados]);
+
+  // Inicializar mapa cuando el tab mapa esté activo
+  useEffect(() => {
+    if (tab !== "mapa" || !mapContainerEl || map.current) return;
+    mapboxgl.accessToken = MAPBOX_TOKEN;
+    map.current = new mapboxgl.Map({
+      container: mapContainerEl,
+      style: "mapbox://styles/mapbox/streets-v12",
+      center: MEDELLIN_CENTER,
+      zoom: 12,
+    });
+    map.current.addControl(new mapboxgl.NavigationControl(), "top-right");
+    map.current.on("load", () => pintarMisReportes());
+    return () => { map.current?.remove(); map.current = null; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab, mapContainerEl]);
+
+  // Repintar cuando cambian los reportes
+  useEffect(() => {
+    if (map.current?.loaded()) pintarMisReportes();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [misReportes]);
+
+  function pintarMisReportes() {
+    if (!map.current) return;
+    const COLORES: Record<string, string> = {
+      pendiente: "#f59e0b",
+      en_camino: "#3b82f6",
+      completado: "#22c55e",
+    };
+    misReportes.forEach((r: MiReporte & { lat?: number; lng?: number }) => {
+      if (!r.lat || !r.lng) return;
+      const el = document.createElement("div");
+      el.style.cssText = `width:32px;height:32px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:${COLORES[r.estado] ?? "#6b7280"};border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.3);`;
+      new mapboxgl.Marker({ element: el })
+        .setLngLat([r.lng, r.lat])
+        .setPopup(new mapboxgl.Popup({ offset: 25 }).setHTML(
+          `<div style="font-size:13px;padding:4px 2px">
+            <b>${r.tipo === "emergencia" ? "🚨 Punto crítico" : `♻️ ${r.material ?? "Reciclable"}`}</b><br/>
+            <span style="color:${COLORES[r.estado]}">${r.estado.replace("_", " ")}</span>
+          </div>`
+        ))
+        .addTo(map.current!);
+    });
+  }
 
   async function cargarHistorial() {
     if (!userId) return;
@@ -126,18 +177,24 @@ export default function CiudadanoPage() {
             onClick={() => setTab("nuevo")}
             className={`flex-1 py-2 rounded-xl text-sm font-semibold transition ${tab === "nuevo" ? "bg-green-600 text-white shadow" : "text-gray-500 hover:text-gray-700"}`}
           >
-            ♻️ Nuevo reporte
+            ♻️ Nuevo
           </button>
           <button
             onClick={() => { setTab("historial"); cargarHistorial(); }}
             className={`flex-1 py-2 rounded-xl text-sm font-semibold transition relative ${tab === "historial" ? "bg-green-600 text-white shadow" : "text-gray-500 hover:text-gray-700"}`}
           >
-            📋 Mis reportes
+            📋 Historial
             {notificaciones.length > 0 && (
               <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center">
                 {notificaciones.length}
               </span>
             )}
+          </button>
+          <button
+            onClick={() => { setTab("mapa"); cargarHistorial(); }}
+            className={`flex-1 py-2 rounded-xl text-sm font-semibold transition ${tab === "mapa" ? "bg-green-600 text-white shadow" : "text-gray-500 hover:text-gray-700"}`}
+          >
+            🗺️ Mapa
           </button>
         </div>
 
@@ -203,6 +260,21 @@ export default function CiudadanoPage() {
                   );
                 })}
               </div>
+            )}
+          </div>
+        )}
+
+        {tab === "mapa" && (
+          <div className="w-full max-w-xl">
+            {/* Leyenda */}
+            <div className="flex gap-3 mb-3 text-xs text-gray-600 justify-center">
+              <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-yellow-400 inline-block"/> Pendiente</span>
+              <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-blue-500 inline-block"/> En camino</span>
+              <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-green-500 inline-block"/> Completado</span>
+            </div>
+            <div ref={mapContainerRef} className="w-full rounded-2xl overflow-hidden shadow-md" style={{ height: "420px" }} />
+            {misReportes.length === 0 && (
+              <p className="text-center text-gray-400 text-sm mt-4">Haz tu primer reporte para verlo en el mapa</p>
             )}
           </div>
         )}
