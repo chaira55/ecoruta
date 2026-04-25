@@ -209,7 +209,7 @@ export default function RecicladorPage() {
 
     const solicitudes = reportes
       .filter((r) => r.tipo === "solicitud" && r.estado === "pendiente")
-      .slice(0, 11);
+      .slice(0, 24); // Mapbox soporta hasta 25 waypoints (24 + origen)
 
     const waypoints: [number, number][] = [
       ubicacion,

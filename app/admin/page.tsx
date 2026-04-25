@@ -121,12 +121,18 @@ export default function AdminPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cargando]);
 
+  // Actualizar mapa cuando cambia el filtro de fecha
+  useEffect(() => {
+    if (map.current?.loaded()) agregarCapas();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filtroFecha, reportes]);
+
   function agregarCapas() {
-    if (!map.current || reportes.length === 0) return;
+    if (!map.current || reportesFiltrados.length === 0) return;
 
     const geojson: GeoJSON.FeatureCollection = {
       type: "FeatureCollection",
-      features: reportes.map((r) => ({
+      features: reportesFiltrados.map((r) => ({
         type: "Feature",
         properties: { tipo: r.tipo, estado: r.estado },
         geometry: { type: "Point", coordinates: [r.lng, r.lat] },
@@ -311,29 +317,27 @@ export default function AdminPage() {
         </div>
       </div>
 
-      {/* Mapa */}
-      {tabActivo === "mapa" && (
-        <div className="flex-1 relative">
-          {cargando ? (
-            <div className="absolute inset-0 flex items-center justify-center bg-gray-950">
-              <p className="text-gray-400">Cargando datos...</p>
+      {/* Mapa — siempre en el DOM, oculto con CSS cuando no está activo */}
+      <div className={`flex-1 relative ${tabActivo !== "mapa" ? "hidden" : ""}`}>
+        {cargando ? (
+          <div className="absolute inset-0 flex items-center justify-center bg-gray-950">
+            <p className="text-gray-400">Cargando datos...</p>
+          </div>
+        ) : (
+          <div ref={mapContainer} className="w-full h-full" />
+        )}
+        {vistaActiva === "calor" && !cargando && tabActivo === "mapa" && (
+          <div className="absolute bottom-4 right-4 bg-gray-900/90 rounded-xl p-3 text-xs text-white">
+            <p className="font-semibold mb-2">Intensidad</p>
+            <div className="flex items-center gap-1">
+              <div className="w-24 h-3 rounded" style={{background: "linear-gradient(to right, #22c55e, #f59e0b, #ef4444, #7f1d1d)"}} />
             </div>
-          ) : (
-            <div ref={mapContainer} className="w-full h-full" />
-          )}
-          {vistaActiva === "calor" && !cargando && (
-            <div className="absolute bottom-4 right-4 bg-gray-900/90 rounded-xl p-3 text-xs text-white">
-              <p className="font-semibold mb-2">Intensidad</p>
-              <div className="flex items-center gap-1">
-                <div className="w-24 h-3 rounded" style={{background: "linear-gradient(to right, #22c55e, #f59e0b, #ef4444, #7f1d1d)"}} />
-              </div>
-              <div className="flex justify-between text-gray-400 mt-1">
-                <span>Baja</span><span>Alta</span>
-              </div>
+            <div className="flex justify-between text-gray-400 mt-1">
+              <span>Baja</span><span>Alta</span>
             </div>
-          )}
-        </div>
-      )}
+          </div>
+        )}
+      </div>
 
       {/* Tabla */}
       {tabActivo === "tabla" && (
