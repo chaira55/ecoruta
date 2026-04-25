@@ -246,9 +246,15 @@ export default function CiudadanoPage() {
                           <span className="text-sm font-semibold text-gray-800 capitalize">
                             {r.tipo === "emergencia" ? "🚨 Punto crítico" : `♻️ ${r.material ?? "Reciclable"}`}
                           </span>
-                          <span className={`ml-auto text-xs px-2 py-0.5 rounded-full font-medium ${est.color}`}>
-                            {est.emoji} {est.label}
-                          </span>
+                          {r.tipo === "emergencia" ? (
+                            <span className="ml-auto text-xs px-2 py-0.5 rounded-full font-medium bg-red-100 text-red-700">
+                              ⚠️ Cuidado
+                            </span>
+                          ) : (
+                            <span className={`ml-auto text-xs px-2 py-0.5 rounded-full font-medium ${est.color}`}>
+                              {est.emoji} {est.label}
+                            </span>
+                          )}
                         </div>
                         {r.nota && <p className="text-xs text-gray-400 truncate">{r.nota}</p>}
                         <p className="text-xs text-gray-300 mt-1">

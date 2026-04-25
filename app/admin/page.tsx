@@ -377,13 +377,19 @@ export default function AdminPage() {
                       </td>
                       <td className="px-4 py-3 text-gray-300 capitalize">{r.material ?? "—"}</td>
                       <td className="px-4 py-3">
-                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                          r.estado === "pendiente" ? "bg-yellow-900 text-yellow-300" :
-                          r.estado === "en_camino" ? "bg-blue-900 text-blue-300" :
-                          "bg-green-900 text-green-300"
-                        }`}>
-                          {r.estado.replace("_", " ")}
-                        </span>
+                        {r.tipo === "emergencia" ? (
+                          <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-red-900 text-red-300">
+                            ⚠️ Cuidado
+                          </span>
+                        ) : (
+                          <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                            r.estado === "pendiente" ? "bg-yellow-900 text-yellow-300" :
+                            r.estado === "en_camino" ? "bg-blue-900 text-blue-300" :
+                            "bg-green-900 text-green-300"
+                          }`}>
+                            {r.estado.replace("_", " ")}
+                          </span>
+                        )}
                       </td>
                       <td className="px-4 py-3 text-gray-300">{r.peso_kg ?? "—"}</td>
                       <td className="px-4 py-3 text-gray-400 text-xs">
