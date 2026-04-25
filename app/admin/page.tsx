@@ -46,6 +46,12 @@ export default function AdminPage() {
     cargarDatos();
   }, []);
 
+  // Refrescar datos al entrar a la tabla
+  useEffect(() => {
+    if (tabActivo === "tabla") cargarDatos();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tabActivo]);
+
   function filtrarPorFecha(data: Reporte[]) {
     if (filtroFecha === "todo") return data;
     const ahora = new Date();
@@ -61,7 +67,7 @@ export default function AdminPage() {
   async function cargarDatos() {
     setCargando(true);
     try {
-      const res = await fetch("/api/reportes", { credentials: "include" });
+      const res = await fetch("/api/reportes?todos=1", { credentials: "include" });
       const data = await res.json();
 
       // Mapear lat/lng desde la API

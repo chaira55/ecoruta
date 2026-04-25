@@ -201,6 +201,18 @@ export default function RecicladorPage() {
         }
       }
     }
+
+    // Limpiar ruta si ya no quedan reportes pendientes o en camino
+    if (estado === "completado") {
+      const restantes = reportesRef.current.filter(
+        (r) => r.id !== id && r.estado !== "completado"
+      );
+      if (restantes.length === 0 && routeLayerRef.current && map.current) {
+        if (map.current.getLayer("ruta")) map.current.removeLayer("ruta");
+        if (map.current.getSource("ruta")) map.current.removeSource("ruta");
+        routeLayerRef.current = false;
+      }
+    }
   }
 
   async function generarRuta() {
