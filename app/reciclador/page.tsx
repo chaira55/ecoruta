@@ -6,7 +6,6 @@ import { MEDELLIN_CENTER, MAPBOX_TOKEN, PIN_COLORS } from "@/lib/mapbox";
 import type { EstadoReporte } from "@/lib/types";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
-import Link from "next/link";
 import AuthGuard from "../components/AuthGuard";
 import UserMenu from "../components/UserMenu";
 
@@ -24,6 +23,8 @@ interface ReporteCercano {
   creado_en: string;
 }
 
+const COLOR_EN_RUTA = "#3b82f6";
+
 export default function RecicladorPage() {
   const [mapContainerEl, setMapContainerEl] = useState<HTMLDivElement | null>(null);
   const mapContainerRef = useCallback((node: HTMLDivElement | null) => setMapContainerEl(node), []);
@@ -37,16 +38,19 @@ export default function RecicladorPage() {
   const [ubicacion, setUbicacion] = useState<[number, number] | null>(null);
   const [cargando, setCargando] = useState(true);
   const [generandoRuta, setGenerandoRuta] = useState(false);
-  const [pesoInput, setPesoInput] = useState("");
   const [filtroMaterial, setFiltroMaterial] = useState<string>("todos");
-  const [confirmando, setConfirmando] = useState(false);
+  const [confirmandoId, setConfirmandoId] = useState<string | null>(null);
   const [errorApi, setErrorApi] = useState<string | null>(null);
   const [fotoAmpliada, setFotoAmpliada] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
   const [statsPanel, setStatsPanel] = useState(false);
   const [statsReciclador, setStatsReciclador] = useState<{ total_kg: number; co2_kg: number; completados: number; por_material: Record<string, number> } | null>(null);
 
-  // Cargar userId al montar
+  // Estado para la lista de puntos seleccionados para recoger
+  const [puntosEnRuta, setPuntosEnRuta] = useState<string[]>([]);
+  const [tabActiva, setTabActiva] = useState<"disponibles" | "mi_ruta">("disponibles");
+  const [pesosInput, setPesosInput] = useState<Record<string, string>>({});
+
   useEffect(() => {
     const supabase = createClient();
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -54,13 +58,11 @@ export default function RecicladorPage() {
     });
   }, []);
 
-  // Cargar reportes al montar (independiente del mapa)
   useEffect(() => {
     cargarReportes(MEDELLIN_CENTER[1], MEDELLIN_CENTER[0]);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Inicializar mapa cuando el container esté disponible
   useEffect(() => {
     if (map.current || !mapContainerEl) return;
     mapboxgl.accessToken = MAPBOX_TOKEN;
@@ -76,7 +78,7 @@ export default function RecicladorPage() {
 
     map.current.on("load", () => {
       obtenerUbicacion();
-      if (reportesRef.current.length > 0) pintarPines(reportesRef.current);
+      if (reportesRef.current.length > 0) pintarPines(reportesRef.current, []);
     });
 
     return () => {
@@ -94,7 +96,7 @@ export default function RecicladorPage() {
   const watchIdRef = useRef<number | null>(null);
 
   function obtenerUbicacion() {
-    if (watchIdRef.current !== null) return; // ya está activo
+    if (watchIdRef.current !== null) return;
 
     watchIdRef.current = navigator.geolocation.watchPosition(
       (pos) => {
@@ -102,14 +104,12 @@ export default function RecicladorPage() {
         setUbicacion(coords);
 
         if (!miMarkerRef.current) {
-          // Primera vez: crear el marcador y centrar el mapa
           miMarkerRef.current = new mapboxgl.Marker({ color: "#6366f1" })
             .setLngLat(coords)
             .setPopup(new mapboxgl.Popup().setText("Tú estás aquí"))
             .addTo(map.current!);
           map.current?.flyTo({ center: coords, zoom: 14 });
         } else {
-          // Actualizaciones siguientes: mover el marcador suavemente
           miMarkerRef.current.setLngLat(coords);
           map.current?.easeTo({ center: coords, duration: 1000 });
         }
@@ -133,7 +133,7 @@ export default function RecicladorPage() {
       const lista = Array.isArray(data) ? data : [];
       setReportes(lista);
       reportesRef.current = lista;
-      if (map.current?.loaded()) pintarPines(lista);
+      if (map.current?.loaded()) pintarPines(lista, puntosEnRuta);
     } catch (e) {
       setErrorApi(e instanceof Error ? e.message : "Error de red");
     } finally {
@@ -141,24 +141,31 @@ export default function RecicladorPage() {
     }
   }
 
-  function pintarPines(data: ReporteCercano[]) {
-    // Limpiar markers anteriores
+  function pintarPines(data: ReporteCercano[], enRuta: string[]) {
     Object.values(markersRef.current).forEach((m) => m.remove());
     markersRef.current = {};
 
     data.forEach((r) => {
       const esEmergencia = r.tipo === "emergencia";
+      const estaEnRuta = enRuta.includes(r.id);
       const el = document.createElement("div");
       el.className = esEmergencia ? "cursor-default" : "cursor-pointer";
+
+      const bgColor = esEmergencia
+        ? PIN_COLORS.emergencia
+        : estaEnRuta
+        ? COLOR_EN_RUTA
+        : PIN_COLORS[r.estado];
+
       el.innerHTML = `<div style="
-        background:${esEmergencia ? PIN_COLORS.emergencia : PIN_COLORS[r.estado]};
+        background:${bgColor};
         width:${esEmergencia ? "30px" : "36px"};height:${esEmergencia ? "30px" : "36px"};
         border-radius:50% 50% 50% 0;
-        transform:rotate(-45deg);border:3px solid white;
+        transform:rotate(-45deg);border:3px solid ${estaEnRuta ? "#1d4ed8" : "white"};
         box-shadow:0 2px 8px rgba(0,0,0,0.3);
         opacity:${esEmergencia ? "0.8" : "1"};">
         <span style="display:block;transform:rotate(45deg);text-align:center;line-height:${esEmergencia ? "24px" : "30px"};font-size:12px;">
-          ${esEmergencia ? "🚨" : "♻️"}
+          ${esEmergencia ? "🚨" : estaEnRuta ? "📋" : "♻️"}
         </span>
       </div>`;
 
@@ -166,7 +173,6 @@ export default function RecicladorPage() {
         .setLngLat([r.lng, r.lat])
         .addTo(map.current!);
 
-      // Emergencias: solo tooltip informativo, no seleccionable
       if (esEmergencia) {
         marker.setPopup(
           new mapboxgl.Popup({ offset: 25, closeButton: false })
@@ -175,9 +181,35 @@ export default function RecicladorPage() {
         el.addEventListener("mouseenter", () => marker.getPopup()?.addTo(map.current!));
         el.addEventListener("mouseleave", () => marker.getPopup()?.remove());
       } else {
-        el.addEventListener("click", () => setSeleccionado(r));
+        el.addEventListener("click", () => {
+          setSeleccionado(r);
+          map.current?.flyTo({ center: [r.lng, r.lat], zoom: 15 });
+        });
         markersRef.current[r.id] = marker;
       }
+    });
+  }
+
+  function toggleEnRuta(reporte: ReporteCercano) {
+    setPuntosEnRuta((prev) => {
+      const estaEnRuta = prev.includes(reporte.id);
+      const nueva = estaEnRuta ? prev.filter((x) => x !== reporte.id) : [...prev, reporte.id];
+
+      // Actualizar color del pin en el mapa
+      const marker = markersRef.current[reporte.id];
+      if (marker) {
+        const pinDiv = marker.getElement().querySelector("div") as HTMLElement;
+        const iconSpan = marker.getElement().querySelector("span") as HTMLElement;
+        if (pinDiv) {
+          pinDiv.style.background = estaEnRuta ? PIN_COLORS[reporte.estado] : COLOR_EN_RUTA;
+          pinDiv.style.borderColor = estaEnRuta ? "white" : "#1d4ed8";
+        }
+        if (iconSpan) {
+          iconSpan.textContent = estaEnRuta ? "♻️" : "📋";
+        }
+      }
+
+      return nueva;
     });
   }
 
@@ -200,22 +232,21 @@ export default function RecicladorPage() {
     );
     setSeleccionado((prev) => (prev?.id === id ? { ...prev, estado } : prev));
 
-    // Actualizar color del pin
     const marker = markersRef.current[id];
     if (marker) {
-      const el = marker.getElement().querySelector("div") as HTMLElement;
-      if (el) {
-        if (estado === "completado") {
-          marker.remove();
-          delete markersRef.current[id];
-          setSeleccionado(null);
-        } else {
-          el.style.background = PIN_COLORS[estado];
-        }
+      if (estado === "completado") {
+        marker.remove();
+        delete markersRef.current[id];
+        setSeleccionado((prev) => (prev?.id === id ? null : prev));
+        // Quitar de la lista de ruta
+        setPuntosEnRuta((prev) => prev.filter((x) => x !== id));
+        setPesosInput((prev) => { const next = { ...prev }; delete next[id]; return next; });
+      } else {
+        const el = marker.getElement().querySelector("div") as HTMLElement;
+        if (el) el.style.background = PIN_COLORS[estado];
       }
     }
 
-    // Limpiar ruta si ya no quedan reportes pendientes o en camino
     if (estado === "completado") {
       const restantes = reportesRef.current.filter(
         (r) => r.id !== id && r.estado !== "completado"
@@ -229,12 +260,15 @@ export default function RecicladorPage() {
   }
 
   async function generarRuta() {
-    if (!ubicacion || reportes.length === 0) return;
+    if (!ubicacion) return;
     setGenerandoRuta(true);
 
-    const solicitudes = reportes
-      .filter((r) => r.tipo === "solicitud" && r.estado === "pendiente")
-      .slice(0, 24); // Mapbox soporta hasta 25 waypoints (24 + origen)
+    const base = puntosEnRuta.length > 0
+      ? reportes.filter((r) => puntosEnRuta.includes(r.id) && r.estado !== "completado")
+      : reportes.filter((r) => r.tipo === "solicitud" && r.estado === "pendiente");
+
+    const solicitudes = base.slice(0, 24);
+    if (solicitudes.length === 0) { setGenerandoRuta(false); return; }
 
     const waypoints: [number, number][] = [
       ubicacion,
@@ -250,7 +284,6 @@ export default function RecicladorPage() {
       const { geometry } = await res.json();
 
       if (map.current && geometry) {
-        // Remover ruta anterior
         if (routeLayerRef.current) {
           map.current.removeLayer("ruta");
           map.current.removeSource("ruta");
@@ -269,7 +302,6 @@ export default function RecicladorPage() {
     }
   }
 
-  // Realtime: escuchar nuevos reportes
   useEffect(() => {
     const supabase = createClient();
     const channel = supabase
@@ -288,6 +320,7 @@ export default function RecicladorPage() {
     (r) => r.tipo === "solicitud" && r.estado === "pendiente"
   );
   const emergencias = reportes.filter((r) => r.tipo === "emergencia");
+  const reportesEnRuta = reportes.filter((r) => puntosEnRuta.includes(r.id) && r.estado !== "completado");
 
   return (
     <>
@@ -307,6 +340,11 @@ export default function RecicladorPage() {
               {emergencias.length} emergencias
             </span>
           )}
+          {puntosEnRuta.length > 0 && (
+            <span className="bg-blue-100 text-blue-700 px-2 py-1 rounded-full font-medium">
+              📋 {puntosEnRuta.length} en mi ruta
+            </span>
+          )}
           <button
             onClick={() => { setStatsPanel(true); cargarStatsReciclador(); }}
             className="text-gray-500 hover:text-green-600 border border-gray-200 px-3 py-1 rounded-xl transition text-xs font-medium"
@@ -320,100 +358,280 @@ export default function RecicladorPage() {
       <div className="flex flex-1 overflow-hidden">
         {/* Panel lateral */}
         <div className="w-80 bg-white border-r flex flex-col overflow-hidden">
-          <div className="p-3 border-b">
+
+          {/* Tabs */}
+          <div className="flex border-b">
             <button
-              onClick={generarRuta}
-              disabled={generandoRuta || solicitudesPendientes.length === 0}
-              className="w-full bg-green-600 text-white py-2 rounded-xl text-sm font-semibold hover:bg-green-700 transition disabled:opacity-50"
+              onClick={() => setTabActiva("disponibles")}
+              className={`flex-1 py-2 text-sm font-semibold transition ${
+                tabActiva === "disponibles"
+                  ? "text-green-700 border-b-2 border-green-600"
+                  : "text-gray-400 hover:text-gray-600"
+              }`}
             >
-              {generandoRuta ? "Calculando ruta..." : "🗺️ Generar ruta óptima"}
+              Disponibles
+              {solicitudesPendientes.length > 0 && (
+                <span className="ml-1 bg-gray-100 text-gray-600 text-xs px-1.5 rounded-full">
+                  {solicitudesPendientes.length}
+                </span>
+              )}
+            </button>
+            <button
+              onClick={() => setTabActiva("mi_ruta")}
+              className={`flex-1 py-2 text-sm font-semibold transition ${
+                tabActiva === "mi_ruta"
+                  ? "text-blue-700 border-b-2 border-blue-600"
+                  : "text-gray-400 hover:text-gray-600"
+              }`}
+            >
+              Mi ruta
+              {puntosEnRuta.length > 0 && (
+                <span className="ml-1 bg-blue-100 text-blue-700 text-xs px-1.5 rounded-full">
+                  {puntosEnRuta.length}
+                </span>
+              )}
             </button>
           </div>
 
-          {/* Filtro por material */}
-          <div className="px-3 py-2 border-b flex gap-1 overflow-x-auto">
-            {["todos", "plastico", "carton", "vidrio", "metal", "organico"].map((m) => (
-              <button
-                key={m}
-                onClick={() => setFiltroMaterial(m)}
-                className={`px-2 py-1 rounded-lg text-xs font-medium whitespace-nowrap transition ${
-                  filtroMaterial === m
-                    ? "bg-green-600 text-white"
-                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                }`}
-              >
-                {m === "todos" ? "Todos" : m.charAt(0).toUpperCase() + m.slice(1)}
-              </button>
-            ))}
+          {/* Botón generar ruta */}
+          <div className="p-3 border-b">
+            <button
+              onClick={generarRuta}
+              disabled={generandoRuta || (puntosEnRuta.length === 0 && solicitudesPendientes.length === 0)}
+              className="w-full bg-green-600 text-white py-2 rounded-xl text-sm font-semibold hover:bg-green-700 transition disabled:opacity-50"
+            >
+              {generandoRuta
+                ? "Calculando ruta..."
+                : puntosEnRuta.length > 0
+                ? `🗺️ Ruta con ${puntosEnRuta.length} punto${puntosEnRuta.length > 1 ? "s" : ""} seleccionado${puntosEnRuta.length > 1 ? "s" : ""}`
+                : "🗺️ Generar ruta óptima"}
+            </button>
           </div>
 
-          <div className="flex-1 overflow-y-auto">
-            {/* Aviso de puntos críticos — solo informativo */}
-            {emergencias.length > 0 && (
-              <div className="mx-3 mt-2 mb-1 bg-red-50 border border-red-200 rounded-xl px-3 py-2 flex items-center gap-2">
-                <span className="text-red-500 text-sm">🚨</span>
-                <p className="text-xs text-red-700">
-                  <span className="font-semibold">{emergencias.length} punto{emergencias.length > 1 ? "s" : ""} crítico{emergencias.length > 1 ? "s" : ""}</span> visibles en el mapa. Solo son informativos.
-                </p>
+          {/* ─── TAB: DISPONIBLES ─── */}
+          {tabActiva === "disponibles" && (
+            <>
+              <div className="px-3 py-2 border-b flex gap-1 overflow-x-auto">
+                {["todos", "plastico", "carton", "vidrio", "metal", "organico"].map((m) => (
+                  <button
+                    key={m}
+                    onClick={() => setFiltroMaterial(m)}
+                    className={`px-2 py-1 rounded-lg text-xs font-medium whitespace-nowrap transition ${
+                      filtroMaterial === m
+                        ? "bg-green-600 text-white"
+                        : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                    }`}
+                  >
+                    {m === "todos" ? "Todos" : m.charAt(0).toUpperCase() + m.slice(1)}
+                  </button>
+                ))}
               </div>
-            )}
-            {cargando ? (
-              <div className="p-4 text-center text-gray-400 text-sm">Cargando reportes...</div>
-            ) : errorApi ? (
-              <div className="p-4 text-center text-red-500 text-xs bg-red-50 m-2 rounded-xl">
-                Error: {errorApi}
-              </div>
-            ) : solicitudesPendientes.filter((r) => filtroMaterial === "todos" || r.material === filtroMaterial).length === 0 ? (
-              <div className="p-4 text-center text-gray-400 text-sm">
-                No hay solicitudes cercanas
-              </div>
-            ) : (
-              reportes.filter((r) => r.tipo === "solicitud" && r.estado !== "completado" && (filtroMaterial === "todos" || r.material === filtroMaterial)).map((r) => (
-                <button
-                  key={r.id}
-                  onClick={() => {
-                    setSeleccionado(r);
-                    map.current?.flyTo({ center: [r.lng, r.lat], zoom: 15 });
-                  }}
-                  className={`w-full text-left p-3 border-b hover:bg-gray-50 transition ${
-                    seleccionado?.id === r.id ? "bg-green-50 border-l-4 border-l-green-500" : ""
-                  }`}
-                >
-                  <div className="flex items-center gap-2 mb-1">
-                    <span>{r.tipo === "emergencia" ? "🚨" : "♻️"}</span>
-                    <span className="text-sm font-semibold text-gray-800 capitalize">
-                      {r.tipo === "emergencia" ? "Punto crítico" : r.material ?? "Reciclable"}
-                    </span>
-                    <span
-                      className={`ml-auto text-xs px-2 py-0.5 rounded-full font-medium ${
-                        r.estado === "pendiente"
-                          ? "bg-green-100 text-green-700"
-                          : r.estado === "en_camino"
-                          ? "bg-yellow-100 text-yellow-700"
-                          : "bg-gray-100 text-gray-500"
-                      }`}
-                    >
-                      {r.estado.replace("_", " ")}
-                    </span>
+
+              <div className="flex-1 overflow-y-auto">
+                {emergencias.length > 0 && (
+                  <div className="mx-3 mt-2 mb-1 bg-red-50 border border-red-200 rounded-xl px-3 py-2 flex items-center gap-2">
+                    <span className="text-red-500 text-sm">🚨</span>
+                    <p className="text-xs text-red-700">
+                      <span className="font-semibold">{emergencias.length} punto{emergencias.length > 1 ? "s" : ""} crítico{emergencias.length > 1 ? "s" : ""}</span> visibles en el mapa. Solo son informativos.
+                    </p>
                   </div>
-                  <p className="text-xs text-gray-400">
-                    {r.distancia_metros < 1000
-                      ? `${Math.round(r.distancia_metros)} m`
-                      : `${(r.distancia_metros / 1000).toFixed(1)} km`}
+                )}
+                {cargando ? (
+                  <div className="p-4 text-center text-gray-400 text-sm">Cargando reportes...</div>
+                ) : errorApi ? (
+                  <div className="p-4 text-center text-red-500 text-xs bg-red-50 m-2 rounded-xl">
+                    Error: {errorApi}
+                  </div>
+                ) : solicitudesPendientes.filter((r) => filtroMaterial === "todos" || r.material === filtroMaterial).length === 0 ? (
+                  <div className="p-4 text-center text-gray-400 text-sm">
+                    No hay solicitudes cercanas
+                  </div>
+                ) : (
+                  reportes
+                    .filter((r) => r.tipo === "solicitud" && r.estado !== "completado" && (filtroMaterial === "todos" || r.material === filtroMaterial))
+                    .map((r) => {
+                      const estaEnRuta = puntosEnRuta.includes(r.id);
+                      return (
+                        <div
+                          key={r.id}
+                          className={`border-b transition ${
+                            seleccionado?.id === r.id ? "bg-green-50 border-l-4 border-l-green-500" : ""
+                          }`}
+                        >
+                          <button
+                            onClick={() => {
+                              setSeleccionado(r);
+                              map.current?.flyTo({ center: [r.lng, r.lat], zoom: 15 });
+                            }}
+                            className="w-full text-left p-3 hover:bg-gray-50 transition"
+                          >
+                            <div className="flex items-center gap-2 mb-1">
+                              <span>{estaEnRuta ? "📋" : "♻️"}</span>
+                              <span className="text-sm font-semibold text-gray-800 capitalize flex-1">
+                                {r.material ?? "Reciclable"}
+                              </span>
+                              <span
+                                className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                                  r.estado === "pendiente"
+                                    ? "bg-green-100 text-green-700"
+                                    : "bg-yellow-100 text-yellow-700"
+                                }`}
+                              >
+                                {r.estado.replace("_", " ")}
+                              </span>
+                            </div>
+                            <p className="text-xs text-gray-400">
+                              {r.distancia_metros < 1000
+                                ? `${Math.round(r.distancia_metros)} m`
+                                : `${(r.distancia_metros / 1000).toFixed(1)} km`}
+                            </p>
+                          </button>
+                          {/* Botón agregar / quitar de ruta */}
+                          <div className="px-3 pb-2">
+                            <button
+                              onClick={() => {
+                                toggleEnRuta(r);
+                                if (!estaEnRuta) setTabActiva("mi_ruta");
+                              }}
+                              className={`w-full text-xs py-1.5 rounded-lg font-semibold transition ${
+                                estaEnRuta
+                                  ? "bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100"
+                                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                              }`}
+                            >
+                              {estaEnRuta ? "✓ En mi ruta" : "+ Agregar a mi ruta"}
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })
+                )}
+              </div>
+            </>
+          )}
+
+          {/* ─── TAB: MI RUTA ─── */}
+          {tabActiva === "mi_ruta" && (
+            <div className="flex-1 overflow-y-auto">
+              {reportesEnRuta.length === 0 ? (
+                <div className="p-6 text-center">
+                  <p className="text-4xl mb-3">📋</p>
+                  <p className="text-sm text-gray-500 font-medium">Tu lista está vacía</p>
+                  <p className="text-xs text-gray-400 mt-1">
+                    Ve a <span className="font-semibold">Disponibles</span> y agrega puntos a tu ruta
                   </p>
-                </button>
-              ))
-            )}
-          </div>
+                </div>
+              ) : (
+                <div className="divide-y">
+                  {reportesEnRuta.map((r) => (
+                    <div key={r.id} className="p-3">
+                      {/* Cabecera del item */}
+                      <div className="flex items-center gap-2 mb-1">
+                        <button
+                          onClick={() => {
+                            map.current?.flyTo({ center: [r.lng, r.lat], zoom: 15 });
+                            setSeleccionado(r);
+                          }}
+                          className="flex-1 flex items-center gap-2 text-left"
+                        >
+                          <span className="text-base">📋</span>
+                          <span className="text-sm font-semibold text-gray-800 capitalize">
+                            {r.material ?? "Reciclable"}
+                          </span>
+                          <span
+                            className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                              r.estado === "pendiente"
+                                ? "bg-green-100 text-green-700"
+                                : "bg-yellow-100 text-yellow-700"
+                            }`}
+                          >
+                            {r.estado.replace("_", " ")}
+                          </span>
+                        </button>
+                        <button
+                          onClick={() => toggleEnRuta(r)}
+                          className="text-gray-300 hover:text-red-400 transition text-lg leading-none"
+                          title="Quitar de mi ruta"
+                        >
+                          ×
+                        </button>
+                      </div>
+
+                      <p className="text-xs text-gray-400 mb-2">
+                        📍 {r.distancia_metros < 1000
+                          ? `${Math.round(r.distancia_metros)} m`
+                          : `${(r.distancia_metros / 1000).toFixed(1)} km`}
+                      </p>
+
+                      {/* Acciones */}
+                      {r.estado === "pendiente" && confirmandoId !== r.id && (
+                        <button
+                          onClick={() => setConfirmandoId(r.id)}
+                          className="w-full bg-yellow-500 text-white py-1.5 rounded-lg text-xs font-semibold hover:bg-yellow-600 transition"
+                        >
+                          🚴 Voy en camino
+                        </button>
+                      )}
+
+                      {r.estado === "pendiente" && confirmandoId === r.id && (
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => { actualizarEstado(r.id, "en_camino"); setConfirmandoId(null); }}
+                            className="flex-1 bg-yellow-500 text-white py-1.5 rounded-lg text-xs font-semibold hover:bg-yellow-600 transition"
+                          >
+                            Confirmar
+                          </button>
+                          <button
+                            onClick={() => setConfirmandoId(null)}
+                            className="px-3 bg-gray-100 text-gray-600 py-1.5 rounded-lg text-xs font-semibold hover:bg-gray-200 transition"
+                          >
+                            Cancelar
+                          </button>
+                        </div>
+                      )}
+
+                      {r.estado === "en_camino" && (
+                        <div className="flex gap-2 items-center">
+                          <input
+                            type="number"
+                            min="0.1"
+                            step="0.1"
+                            placeholder="kg"
+                            value={pesosInput[r.id] ?? ""}
+                            onChange={(e) =>
+                              setPesosInput((prev) => ({ ...prev, [r.id]: e.target.value }))
+                            }
+                            className="w-20 border border-gray-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-green-400"
+                          />
+                          <span className="text-xs text-gray-400">kg</span>
+                          <button
+                            onClick={() => {
+                              const kg = parseFloat(pesosInput[r.id] ?? "");
+                              if (!kg || kg <= 0) return;
+                              actualizarEstado(r.id, "completado", kg);
+                            }}
+                            disabled={!pesosInput[r.id] || parseFloat(pesosInput[r.id]) <= 0}
+                            className="flex-1 bg-green-600 text-white py-1.5 rounded-lg text-xs font-semibold hover:bg-green-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            ✅ Recolectado
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Mapa */}
         <div className="flex-1 relative">
           <div ref={mapContainerRef} className="w-full h-full" />
 
-          {/* Panel de detalle */}
+          {/* Panel de detalle (fotos + nota) */}
           {seleccionado && (
-            <div className="absolute bottom-4 left-4 right-4 bg-white rounded-2xl shadow-xl p-4 z-10">
+            <div className="absolute bottom-4 left-4 right-4 bg-white rounded-2xl shadow-xl p-4 z-10 max-h-72 overflow-y-auto">
               <div className="flex justify-between items-start mb-3">
                 <div>
                   <h3 className="font-bold text-gray-800">
@@ -428,7 +646,6 @@ export default function RecicladorPage() {
                 <button onClick={() => setSeleccionado(null)} className="text-gray-400 hover:text-gray-600 text-lg">×</button>
               </div>
 
-              {/* Fotos del reporte */}
               {seleccionado.foto_url && (
                 <div className={`grid gap-2 mb-3 ${[...(seleccionado.fotos_extra ?? []), seleccionado.foto_url].length > 1 ? "grid-cols-2" : "grid-cols-1"}`}>
                   {[seleccionado.foto_url, ...(seleccionado.fotos_extra ?? [])].map((url, i) => (
@@ -450,61 +667,23 @@ export default function RecicladorPage() {
                 </p>
               )}
 
-              {/* Botones de cambio de estado */}
+              {/* Acceso rápido a Mi ruta desde el detalle */}
               {seleccionado.tipo === "solicitud" && (
                 <div className="flex gap-2">
-                  {seleccionado.estado === "pendiente" && !confirmando && (
-                    <button
-                      onClick={() => setConfirmando(true)}
-                      className="flex-1 bg-yellow-500 text-white py-2 rounded-xl text-sm font-semibold hover:bg-yellow-600 transition"
-                    >
-                      🚴 Voy en camino
-                    </button>
-                  )}
-                  {seleccionado.estado === "pendiente" && confirmando && (
-                    <div className="flex-1 flex gap-2">
-                      <button
-                        onClick={() => { actualizarEstado(seleccionado.id, "en_camino"); setConfirmando(false); }}
-                        className="flex-1 bg-yellow-500 text-white py-2 rounded-xl text-sm font-semibold hover:bg-yellow-600 transition"
-                      >
-                        Confirmar
-                      </button>
-                      <button
-                        onClick={() => setConfirmando(false)}
-                        className="px-3 bg-gray-100 text-gray-600 py-2 rounded-xl text-sm font-semibold hover:bg-gray-200 transition"
-                      >
-                        Cancelar
-                      </button>
-                    </div>
-                  )}
-                  {seleccionado.estado === "en_camino" && (
-                    <div className="flex-1 flex flex-col gap-2">
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="number"
-                          min="0.1"
-                          step="0.1"
-                          placeholder="Peso en kg"
-                          value={pesoInput}
-                          onChange={(e) => setPesoInput(e.target.value)}
-                          className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-400"
-                        />
-                        <span className="text-sm text-gray-500">kg</span>
-                      </div>
-                      <button
-                        onClick={() => {
-                          const kg = parseFloat(pesoInput);
-                          if (!kg || kg <= 0) return;
-                          actualizarEstado(seleccionado.id, "completado", kg);
-                          setPesoInput("");
-                        }}
-                        disabled={!pesoInput || parseFloat(pesoInput) <= 0}
-                        className="w-full bg-green-600 text-white py-2 rounded-xl text-sm font-semibold hover:bg-green-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        ✅ Marcar completado
-                      </button>
-                    </div>
-                  )}
+                  <button
+                    onClick={() => {
+                      toggleEnRuta(seleccionado);
+                      setTabActiva("mi_ruta");
+                      setSeleccionado(null);
+                    }}
+                    className={`flex-1 py-2 rounded-xl text-sm font-semibold transition ${
+                      puntosEnRuta.includes(seleccionado.id)
+                        ? "bg-blue-50 text-blue-700 border border-blue-200"
+                        : "bg-blue-600 text-white hover:bg-blue-700"
+                    }`}
+                  >
+                    {puntosEnRuta.includes(seleccionado.id) ? "✓ En mi ruta" : "+ Agregar a mi ruta"}
+                  </button>
                 </div>
               )}
             </div>
