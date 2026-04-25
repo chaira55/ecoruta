@@ -19,10 +19,7 @@ export async function GET(request: NextRequest) {
   }
 
   const { data, error } = await supabase
-    .from("reportes")
-    .select("id, tipo, material, estado, foto_url, fotos_extra, nota, peso_kg, creado_en")
-    .eq("ciudadano_id", ciudadano_id)
-    .order("creado_en", { ascending: false });
+    .rpc("reportes_por_ciudadano", { p_ciudadano_id: ciudadano_id });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json(data ?? []);

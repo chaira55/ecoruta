@@ -19,6 +19,8 @@ interface MiReporte {
   nota: string | null;
   peso_kg: number | null;
   creado_en: string;
+  lat?: number;
+  lng?: number;
 }
 
 const ESTADO_LABEL: Record<string, { label: string; color: string; emoji: string }> = {
