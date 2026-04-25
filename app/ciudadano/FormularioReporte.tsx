@@ -111,7 +111,8 @@ export default function FormularioReporte({ tipo, onVolver }: Props) {
       if (!res.ok) throw new Error(resultado.error ?? `HTTP ${res.status}`);
 
       if (resultado.tipo_material) {
-        setMateriales([resultado.tipo_material as Material]);
+        const mat = resultado.tipo_material as Material;
+        setMateriales((prev) => prev.includes(mat) ? prev : [...prev, mat]);
         setIaDetectado(resultado.tipo_material);
       } else {
         setIaDetectado("no_detectado");
