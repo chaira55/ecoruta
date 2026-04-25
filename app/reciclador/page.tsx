@@ -147,15 +147,18 @@ export default function RecicladorPage() {
     markersRef.current = {};
 
     data.forEach((r) => {
+      const esEmergencia = r.tipo === "emergencia";
       const el = document.createElement("div");
-      el.className = "cursor-pointer";
+      el.className = esEmergencia ? "cursor-default" : "cursor-pointer";
       el.innerHTML = `<div style="
-        background:${r.tipo === "emergencia" ? PIN_COLORS.emergencia : PIN_COLORS[r.estado]};
-        width:36px;height:36px;border-radius:50% 50% 50% 0;
+        background:${esEmergencia ? PIN_COLORS.emergencia : PIN_COLORS[r.estado]};
+        width:${esEmergencia ? "30px" : "36px"};height:${esEmergencia ? "30px" : "36px"};
+        border-radius:50% 50% 50% 0;
         transform:rotate(-45deg);border:3px solid white;
-        box-shadow:0 2px 8px rgba(0,0,0,0.3);">
-        <span style="display:block;transform:rotate(45deg);text-align:center;line-height:30px;font-size:14px;">
-          ${r.tipo === "emergencia" ? "🚨" : "♻️"}
+        box-shadow:0 2px 8px rgba(0,0,0,0.3);
+        opacity:${esEmergencia ? "0.8" : "1"};">
+        <span style="display:block;transform:rotate(45deg);text-align:center;line-height:${esEmergencia ? "24px" : "30px"};font-size:12px;">
+          ${esEmergencia ? "🚨" : "♻️"}
         </span>
       </div>`;
 
@@ -163,8 +166,18 @@ export default function RecicladorPage() {
         .setLngLat([r.lng, r.lat])
         .addTo(map.current!);
 
-      el.addEventListener("click", () => setSeleccionado(r));
-      markersRef.current[r.id] = marker;
+      // Emergencias: solo tooltip informativo, no seleccionable
+      if (esEmergencia) {
+        marker.setPopup(
+          new mapboxgl.Popup({ offset: 25, closeButton: false })
+            .setHTML(`<div style="font-size:12px;padding:2px 4px"><b>🚨 Punto crítico</b><br/><span style="color:#666">${r.nota ?? "Basura acumulada"}</span></div>`)
+        );
+        el.addEventListener("mouseenter", () => marker.getPopup()?.addTo(map.current!));
+        el.addEventListener("mouseleave", () => marker.getPopup()?.remove());
+      } else {
+        el.addEventListener("click", () => setSeleccionado(r));
+        markersRef.current[r.id] = marker;
+      }
     });
   }
 
@@ -335,18 +348,27 @@ export default function RecicladorPage() {
           </div>
 
           <div className="flex-1 overflow-y-auto">
+            {/* Aviso de puntos críticos — solo informativo */}
+            {emergencias.length > 0 && (
+              <div className="mx-3 mt-2 mb-1 bg-red-50 border border-red-200 rounded-xl px-3 py-2 flex items-center gap-2">
+                <span className="text-red-500 text-sm">🚨</span>
+                <p className="text-xs text-red-700">
+                  <span className="font-semibold">{emergencias.length} punto{emergencias.length > 1 ? "s" : ""} crítico{emergencias.length > 1 ? "s" : ""}</span> visibles en el mapa. Solo son informativos.
+                </p>
+              </div>
+            )}
             {cargando ? (
               <div className="p-4 text-center text-gray-400 text-sm">Cargando reportes...</div>
             ) : errorApi ? (
               <div className="p-4 text-center text-red-500 text-xs bg-red-50 m-2 rounded-xl">
                 Error: {errorApi}
               </div>
-            ) : reportes.filter((r) => r.estado !== "completado" && (filtroMaterial === "todos" || r.material === filtroMaterial || (filtroMaterial === "todos" && r.tipo === "emergencia"))).length === 0 ? (
+            ) : solicitudesPendientes.filter((r) => filtroMaterial === "todos" || r.material === filtroMaterial).length === 0 ? (
               <div className="p-4 text-center text-gray-400 text-sm">
                 No hay solicitudes cercanas
               </div>
             ) : (
-              reportes.filter((r) => r.estado !== "completado" && (filtroMaterial === "todos" || r.material === filtroMaterial)).map((r) => (
+              reportes.filter((r) => r.tipo === "solicitud" && r.estado !== "completado" && (filtroMaterial === "todos" || r.material === filtroMaterial)).map((r) => (
                 <button
                   key={r.id}
                   onClick={() => {
